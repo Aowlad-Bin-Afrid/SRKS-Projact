@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRKS | সাইদার রহমান কৃষি সেবা</title>
+  <link rel="icon" type="image/svg+xml"
+href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M24 44C24 44 8 32 8 20C8 11 15 5 24 5C33 5 40 11 40 20C40 32 24 44 24 44Z" fill="white"/><path d="M24 44L24 22" stroke="%230f3d2e" stroke-width="2.5"/><path d="M24 32C24 32 16 25 14 18" stroke="%230f3d2e" stroke-width="2"/><path d="M24 27C24 27 32 23 34 16" stroke="%230f3d2e" stroke-width="2"/></svg>'>
+  <meta name="description" content="সাইদার রহমান কৃষি সেবা — বীজ ও কীটনাশক বিক্রয় ব্যবস্থাপনা">
+  <meta name="theme-color" content="#0f3d2e" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600;700&family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ═══════════════ LOADING SCREEN ═══════════════ -->
+  <div class="splash" id="loadingScreen">
+    <div class="splash-inner">
+      <div class="splash-logo">
+        <div class="splash-logo-fallback" id="splashLogoFallback">
+          <svg viewBox="0 0 64 64" fill="none" width="52" height="52">
+            <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+            <path d="M32 52C32 52 14 39 14 24C14 15 22 8 32 8C42 8 50 15 50 24C50 39 32 52 32 52Z" fill="rgba(255,255,255,0.9)"/>
+            <path d="M32 52L32 28" stroke="#0f3d2e" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M32 38C32 38 24 31 22 23" stroke="#0f3d2e" stroke-width="2" stroke-linecap="round"/>
+            <path d="M32 33C32 33 40 29 42 21" stroke="#0f3d2e" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="splash-track"><div class="splash-bar"></div></div>
+      <p class="splash-name">সাইদার রহমান কৃষি সেবা</p>
+      <p class="splash-sub">লোড হচ্ছে…</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ LOGIN ═══════════════ -->
+  <main class="auth-page" id="loginPage" style="display:none">
+    <div class="auth-bg">
+      <div class="auth-grid"></div>
+      <div class="auth-glow g1"></div>
+      <div class="auth-glow g2"></div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-logo-wrap" id="authLogoWrap">
+          <div class="auth-logo-icon">
+            <svg viewBox="0 0 48 48" fill="none" width="30" height="30">
+              <path d="M24 44C24 44 8 32 8 20C8 11 15 5 24 5C33 5 40 11 40 20C40 32 24 44 24 44Z" fill="white" opacity="0.92"/>
+              <path d="M24 44L24 22" stroke="#0f3d2e" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M24 32C24 32 16 25 14 18" stroke="#0f3d2e" stroke-width="2" stroke-linecap="round"/>
+              <path d="M24 27C24 27 32 23 34 16" stroke="#0f3d2e" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h1 class="auth-title">সাইদার রহমান</h1>
+          <p class="auth-subtitle">কৃষি সেবা · বীজ ও কীটনাশক</p>
+        </div>
+      </div>
+
+      <h2 class="auth-heading">স্বাগতম</h2>
+      <p class="auth-desc">আপনার অ্যাকাউন্টে প্রবেশ করুন</p>
+
+      <div id="loginError" class="login-error" style="display:none"></div>
+
+      <form id="loginForm" autocomplete="off" novalidate>
+        <div class="fi">
+          <label class="fi-label" for="username">ইউজারনেম</label>
+          <div class="fi-wrap">
+            <i class="fa-regular fa-user fi-icon"></i>
+            <input type="text" id="username" placeholder="Username" required autocomplete="off" class="fi-input">
+          </div>
+        </div>
+        <div class="fi">
+          <label class="fi-label" for="password">পাসওয়ার্ড</label>
+          <div class="fi-wrap">
+            <i class="fa-solid fa-lock fi-icon"></i>
+            <input type="password" id="password" placeholder="Password" required class="fi-input">
+            <button type="button" class="fi-eye" id="showPass" aria-label="পাসওয়ার্ড দেখুন"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="auth-btn" id="loginBtn">
+          <i class="fa-solid fa-right-to-bracket"></i> প্রবেশ করুন
+        </button>
+      </form>
+      <p class="auth-hint">ডিফল্ট: <b>admin</b> / <b>1234</b></p>
+    </div>
+  </main>
+
+  <!-- ═══════════════ APP ═══════════════ -->
+  <div class="app" id="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="মূল নেভিগেশন">
+      <div class="sb-head">
+        <div class="sb-brand" id="sidebarBrand">
+          <div class="sb-logo-icon">
+            <svg viewBox="0 0 40 40" fill="none" width="24" height="24">
+              <path d="M20 36C20 36 6 26 6 16C6 9 12 4 20 4C28 4 34 9 34 16C34 26 20 36 20 36Z" fill="rgba(255,255,255,0.88)"/>
+              <path d="M20 36L20 18" stroke="#0f3d2e" stroke-width="2" stroke-linecap="round"/>
+              <path d="M20 27C20 27 14 21 12 15" stroke="#0f3d2e" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M20 23C20 23 26 20 28 14" stroke="#0f3d2e" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="sb-brand-text">
+            <span class="sb-name">সাইদার রহমান</span>
+            <span class="sb-sub">কৃষি সেবা</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sb-nav">
+        <div class="sb-group-label">মূল মেনু</div>
+        <button class="sb-item active" data-section="dashboard" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-gauge-high"></i></span>
+          <span>ড্যাশবোর্ড</span>
+        </button>
+        <button class="sb-item" data-section="products" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-seedling"></i></span>
+          <span>পণ্য স্টক</span>
+        </button>
+        <button class="sb-item" data-section="sales" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-cash-register"></i></span>
+          <span>বিক্রয়</span>
+        </button>
+        <div class="sb-group-label">হিসাব</div>
+        <button class="sb-item" data-section="dues" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-hand-holding-dollar"></i></span>
+          <span>বাকি / ধার</span>
+        </button>
+        <button class="sb-item" data-section="accounts" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-wallet"></i></span>
+          <span>হিসাব</span>
+        </button>
+        <button class="sb-item" data-section="reports" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-chart-column"></i></span>
+          <span>রিপোর্ট</span>
+        </button>
+        <div class="sb-group-label">সিস্টেম</div>
+        <button class="sb-item" data-section="settings" type="button">
+          <span class="sb-icon"><i class="fa-solid fa-sliders"></i></span>
+          <span>সেটিংস</span>
+        </button>
+      </nav>
+
+      <div class="sb-footer">
+        <div class="sb-season"><i class="fa-solid fa-leaf"></i><span id="currentSeason">ফসলের মৌসুম</span></div>
+        <button class="sb-logout" id="logoutBtn" type="button"><i class="fa-solid fa-right-from-bracket"></i> লগআউট</button>
+      </div>
+    </aside>
+
+    <div class="mob-overlay" id="mobileOverlay"></div>
+
+    <!-- MAIN -->
+    <main class="main" role="main">
+
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="tb-left">
+          <button class="tb-menu" id="menuToggle" type="button" aria-label="মেনু খুলুন"><i class="fa-solid fa-bars"></i></button>
+          <div class="tb-title">
+            <h1 id="pageTitle">ড্যাশবোর্ড</h1>
+            <p id="todayDate"></p>
+          </div>
+        </div>
+        <div class="tb-right">
+          <button class="tb-btn notif-btn" id="notificationBtn" type="button" aria-label="নোটিফিকেশন">
+            <i class="fa-regular fa-bell"></i>
+            <span id="notificationBadge" class="nb" aria-live="polite">0</span>
+          </button>
+          <div class="tb-user"><i class="fa-solid fa-circle-user"></i><span>Admin</span></div>
+        </div>
+      </header>
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <section class="sec active-section" id="dashboard">
+
+        <!-- Due reminders -->
+        <div class="reminder-band" id="dueReminderPanel" style="display:none">
+          <div class="rem-head"><i class="fa-solid fa-bell"></i> জরুরি বাকি আদায়</div>
+          <div id="dueReminderList"></div>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="kpi-strip">
+          <div class="kpi-card kpi-primary">
+            <div class="kpi-ico"><i class="fa-solid fa-sack-dollar"></i></div>
+            <div class="kpi-body">
+              <span>আজকের বিক্রয়</span>
+              <strong id="todaySales">৳০</strong>
+            </div>
+            <div class="kpi-badge up"><i class="fa-solid fa-arrow-trend-up"></i></div>
+          </div>
+          <div class="kpi-card kpi-emerald">
+            <div class="kpi-ico"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
+            <div class="kpi-body">
+              <span>আজকের লাভ</span>
+              <strong id="todayProfit">৳০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-sky">
+            <div class="kpi-ico"><i class="fa-solid fa-store"></i></div>
+            <div class="kpi-body">
+              <span>পাইকারি বিক্রয়</span>
+              <strong id="wholesaleSales">৳০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-ico"><i class="fa-solid fa-basket-shopping"></i></div>
+            <div class="kpi-body">
+              <span>খুচরা বিক্রয়</span>
+              <strong id="retailSales">৳০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-rose">
+            <div class="kpi-ico"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="kpi-body">
+              <span>মোট বকেয়া</span>
+              <strong id="totalDue">৳০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-teal">
+            <div class="kpi-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="kpi-body">
+              <span>আজ আদায়</span>
+              <strong id="todayCollection">৳০</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit row -->
+        <div class="dash-profit-row">
+          <div class="profit-mini sky">
+            <i class="fa-solid fa-coins"></i>
+            <span>পাইকারি লাভ</span>
+            <strong id="wholesaleDashProfit">৳০</strong>
+          </div>
+          <div class="profit-mini amber">
+            <i class="fa-solid fa-coins"></i>
+            <span>খুচরা লাভ</span>
+            <strong id="retailDashProfit">৳০</strong>
+          </div>
+          <div class="profit-mini warn">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>কম স্টক পণ্য</span>
+            <strong id="lowStockCount">০</strong>
+          </div>
+          <div class="profit-mini purple">
+            <i class="fa-solid fa-warehouse"></i>
+            <span>স্টক মূল্য</span>
+            <strong id="totalStockValue">৳০</strong>
+          </div>
+        </div>
+
+        <!-- Two col -->
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-clock-rotate-left"></i> সাম্প্রতিক বিক্রয়</h3>
+              <button class="btn-link" data-section-jump="sales" type="button">সব দেখুন <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th>সময়</th><th>পণ্য</th><th>পরিমাণ</th><th>মোট</th><th>ধরন</th></tr></thead>
+                <tbody id="recentSalesTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b"></i> স্টক সতর্কতা</h3>
+            </div>
+            <div id="lowStockList" class="low-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ PRODUCTS ═══ -->
+      <section class="sec" id="products">
+        <div class="card">
+          <div class="tab-row">
+            <button class="tab-btn active-tab" id="tabManual" type="button" onclick="switchProductTab('manual')">
+              <i class="fa-solid fa-pen-to-square"></i> ম্যানুয়াল ইনপুট
+            </button>
+            <button class="tab-btn" id="tabAuto" type="button" onclick="switchProductTab('auto')">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> অটো ইনপুট
+            </button>
+          </div>
+
+          <!-- Manual pane -->
+          <div class="tab-pane active-pane" id="paneManual">
+            <div class="card-head" style="border-top:none">
+              <h3><i class="fa-solid fa-plus-circle"></i> নতুন পণ্য যোগ করুন</h3>
+            </div>
+            <form class="pform" id="productForm" novalidate>
+              <input type="hidden" id="productId">
+              <div class="fg">
+                <div class="fi"><label class="fi-label" for="pName">পণ্যের নাম <span class="req">*</span></label><div class="fi-wrap"><input id="pName" placeholder="পণ্যের নাম" required class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pBrand">ব্র্যান্ড / কোম্পানি</label><div class="fi-wrap"><input id="pBrand" placeholder="ACI, BRAC..." class="fi-input"></div></div>
+              </div>
+              <div class="fg">
+                <div class="fi"><label class="fi-label" for="pMainCat">প্রধান ক্যাটাগরি <span class="req">*</span></label><div class="fi-wrap"><select id="pMainCat" onchange="onMainCatChange()" class="fi-input"><option value="">বেছে নিন</option><option value="বীজ">🌱 বীজ</option><option value="কীটনাশক">🧪 কীটনাশক</option></select></div></div>
+                <div class="fi"><label class="fi-label" for="pSubCat">সাব ক্যাটাগরি</label><div class="fi-wrap"><select id="pSubCat" class="fi-input"><option value="">প্রথমে প্রধান ক্যাটাগরি বেছে নিন</option></select></div></div>
+              </div>
+              <div class="fg">
+                <div class="fi"><label class="fi-label" for="pVariety">ভ্যারাইটি</label><div class="fi-wrap"><input id="pVariety" placeholder="BR-28, BRRI dhan87..." class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pPackSize">প্যাক সাইজ</label><div class="fi-wrap"><input id="pPackSize" placeholder="1kg, 500ml..." class="fi-input"></div></div>
+              </div>
+              <div class="fg fg-3">
+                <div class="fi"><label class="fi-label" for="pPurchase">ক্রয়মূল্য (৳)</label><div class="fi-wrap"><input id="pPurchase" type="number" placeholder="0" min="0" step="0.01" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pSelling">খুচরা মূল্য (৳)</label><div class="fi-wrap"><input id="pSelling" type="number" placeholder="0" min="0" step="0.01" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pWholesale">পাইকারি মূল্য (৳)</label><div class="fi-wrap"><input id="pWholesale" type="number" placeholder="0" min="0" step="0.01" class="fi-input"></div></div>
+              </div>
+              <div class="fg fg-3">
+                <div class="fi"><label class="fi-label" for="pStock">বর্তমান স্টক <span class="req">*</span></label><div class="fi-wrap"><input id="pStock" type="number" placeholder="0" min="0" required class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pUnit">ইউনিট</label><div class="fi-wrap"><input id="pUnit" placeholder="kg, প্যাকেট..." class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pLimit">কম স্টক সীমা</label><div class="fi-wrap"><input id="pLimit" type="number" placeholder="5" min="0" class="fi-input"></div></div>
+              </div>
+              <div class="fg fg-3">
+                <div class="fi"><label class="fi-label" for="pBatch">ব্যাচ নম্বর</label><div class="fi-wrap"><input id="pBatch" placeholder="ব্যাচ নম্বর" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pMfgDate">উৎপাদন তারিখ</label><div class="fi-wrap"><input id="pMfgDate" type="date" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="pExpDate">মেয়াদ উত্তীর্ণ তারিখ</label><div class="fi-wrap"><input id="pExpDate" type="date" class="fi-input"></div></div>
+              </div>
+
+              <!-- Seed extras -->
+              <div class="extra-fields" id="seedFields" style="display:none">
+                <div class="extra-legend"><i class="fa-solid fa-seedling"></i> বীজের অতিরিক্ত তথ্য</div>
+                <div class="fg fg-3">
+                  <div class="fi"><label class="fi-label" for="pGermRate">অঙ্কুরোদগম হার (%)</label><div class="fi-wrap"><input id="pGermRate" type="number" placeholder="85" min="0" max="100" class="fi-input"></div></div>
+                  <div class="fi"><label class="fi-label" for="pSeason">বপন মৌসুম</label><div class="fi-wrap"><select id="pSeason" class="fi-input"><option value="">বেছে নিন</option><option>খরিফ-১ (মার্চ-এপ্রিল)</option><option>খরিফ-২ (জুলাই-আগস্ট)</option><option>রবি (নভেম্বর-ডিসেম্বর)</option><option>সারা বছর</option></select></div></div>
+                  <div class="fi"><label class="fi-label" for="pCropType">ফসলের ধরন</label><div class="fi-wrap"><input id="pCropType" placeholder="হাইব্রিড, ওপি..." class="fi-input"></div></div>
+                </div>
+              </div>
+
+              <!-- Pesticide extras -->
+              <div class="extra-fields" id="pestFields" style="display:none">
+                <div class="extra-legend"><i class="fa-solid fa-flask"></i> কীটনাশকের অতিরিক্ত তথ্য</div>
+                <div class="fg">
+                  <div class="fi"><label class="fi-label" for="pActiveIng">কার্যকর উপাদান</label><div class="fi-wrap"><input id="pActiveIng" placeholder="Active Ingredient" class="fi-input"></div></div>
+                  <div class="fi"><label class="fi-label" for="pDosage">ব্যবহারের মাত্রা</label><div class="fi-wrap"><input id="pDosage" placeholder="১ মিলি/লি পানি" class="fi-input"></div></div>
+                </div>
+                <div class="fg">
+                  <div class="fi"><label class="fi-label" for="pTarget">লক্ষ্য রোগ / পোকা</label><div class="fi-wrap"><input id="pTarget" placeholder="কোন পোকা বা রোগের জন্য" class="fi-input"></div></div>
+                  <div class="fi"><label class="fi-label" for="pWarning">সতর্কতা</label><div class="fi-wrap"><input id="pWarning" placeholder="সতর্কতামূলক নির্দেশনা" class="fi-input"></div></div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> সংরক্ষণ করুন</button>
+                <button class="btn btn-ghost" type="button" id="productReset"><i class="fa-solid fa-rotate-left"></i> রিসেট</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Auto pane -->
+          <div class="tab-pane" id="paneAuto">
+            <div class="auto-tip">
+              <p>নিচের ফরম্যাটে তথ্য পেস্ট করুন। সিস্টেম স্বয়ংক্রিয়ভাবে পূরণ করবে।</p>
+              <div class="auto-sample">পণ্যের নাম: ধান বীজ BRRI-28<br>ব্র্যান্ড / কোম্পানি: BRRI<br>প্রধান ক্যাটাগরি: বীজ<br>ক্রয়মূল্য (৳): 950<br>খুচরা বিক্রয়মূল্য (৳): 1100<br>বর্তমান স্টক: 50</div>
+            </div>
+            <textarea class="auto-area" id="autoPasteArea" placeholder="এখানে পণ্যের তথ্য পেস্ট করুন..."></textarea>
+            <div class="auto-result" id="autoParseResult"></div>
+            <div class="auto-error" id="autoParseError"></div>
+            <div class="auto-btns">
+              <button class="btn btn-primary" type="button" id="autoParseBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> বিশ্লেষণ করুন</button>
+              <button class="btn btn-success" type="button" id="autoFillBtn" style="display:none"><i class="fa-solid fa-check-circle"></i> ফর্মে পূরণ ও সংরক্ষণ</button>
+              <button class="btn btn-ghost" type="button" id="autoClearBtn"><i class="fa-solid fa-eraser"></i> পরিষ্কার</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product Table -->
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-boxes-stacked"></i> পণ্য তালিকা</h3>
+            <div class="card-actions">
+              <select id="productFilterCat" class="mini-select">
+                <option value="">সব পণ্য</option>
+                <option value="বীজ">🌱 বীজ</option>
+                <option value="কীটনাশক">🧪 কীটনাশক</option>
+              </select>
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="productSearch" placeholder="পণ্য খুঁজুন...">
+              </div>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>পণ্যের নাম</th><th>ধরন</th><th>ব্র্যান্ড</th><th>ক্রয়মূল্য</th><th>খুচরামূল্য</th><th>পাইকারি</th><th>স্টক</th><th>মেয়াদ</th><th>অ্যাকশন</th></tr></thead>
+              <tbody id="productTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SALES ═══ -->
+      <section class="sec" id="sales">
+        <div class="sales-layout">
+          <!-- Picker -->
+          <div class="card sales-picker">
+            <div class="card-head"><h3><i class="fa-solid fa-seedling"></i> পণ্য নির্বাচন</h3></div>
+            <div class="sale-type-row">
+              <label class="stl">বিক্রয়ের ধরন</label>
+              <div class="sale-type-btns">
+                <button type="button" class="stb active-type" id="retailTypeBtn" onclick="setSaleType('খুচরা')"><i class="fa-solid fa-bag-shopping"></i> খুচরা</button>
+                <button type="button" class="stb stb-wholesale" id="wholesaleTypeBtn" onclick="setSaleType('পাইকারি')"><i class="fa-solid fa-boxes-stacked"></i> পাইকারি</button>
+              </div>
+            </div>
+            <div class="cat-tabs">
+              <button class="ctab active" data-cat-filter="all" type="button">সব</button>
+              <button class="ctab" data-cat-filter="বীজ" type="button">🌱 বীজ</button>
+              <button class="ctab" data-cat-filter="কীটনাশক" type="button">🧪 কীটনাশক</button>
+            </div>
+            <div class="search-box" style="margin:10px 16px">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="productDropdownSearch" placeholder="পণ্য খুঁজুন...">
+            </div>
+            <div id="productOptionList" class="prod-grid"></div>
+            <input type="hidden" id="saleProduct">
+            <div id="selectedProductChip" class="sel-chip"><span>কোনো পণ্য নির্বাচন হয়নি</span></div>
+            <div class="sale-qfields">
+              <div class="fg">
+                <div class="fi"><label class="fi-label" for="saleQty">পরিমাণ</label><div class="fi-wrap"><input id="saleQty" type="number" placeholder="1" min="1" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="salePrice">মূল্য (৳) <span id="salePriceHint" class="hint-tag"></span></label><div class="fi-wrap"><input id="salePrice" type="number" placeholder="0" min="0" class="fi-input"></div></div>
+              </div>
+              <div class="fi"><label class="fi-label" for="saleDiscount">ছাড় (৳)</label><div class="fi-wrap"><input id="saleDiscount" type="number" placeholder="0" min="0" value="0" class="fi-input"></div></div>
+            </div>
+            <div style="padding:0 18px 14px">
+              <button type="button" class="btn btn-success btn-full" id="addSaleItemBtn"><i class="fa-solid fa-cart-plus"></i> কার্টে যোগ করুন</button>
+            </div>
+          </div>
+
+          <!-- Cart / Checkout -->
+          <div class="card sales-checkout">
+            <div class="card-head">
+              <h3><i class="fa-solid fa-cart-shopping"></i> বিক্রয় কার্ট</h3>
+              <span id="saleCartCount" class="cart-badge">০ টি পণ্য</span>
+            </div>
+            <div id="saleCartList" class="cart-list"></div>
+            <div class="cart-total">
+              <span>সর্বমোট</span>
+              <strong id="saleTotalPreview">৳০</strong>
+            </div>
+            <div class="stock-hint" id="saleStockHint">পণ্য নির্বাচন করলে বিবরণ দেখা যাবে</div>
+
+            <form id="saleForm" novalidate>
+              <div class="fg fg-3">
+                <div class="fi"><label class="fi-label" for="saleCustomer">ক্রেতার নাম</label><div class="fi-wrap"><input id="saleCustomer" placeholder="নাম" class="fi-input"></div></div>
+                <div class="fi"><label class="fi-label" for="salePhone">মোবাইল</label><div class="fi-wrap"><input id="salePhone" placeholder="01..." class="fi-input" type="tel"></div></div>
+                <div class="fi"><label class="fi-label" for="saleVillage">গ্রাম</label><div class="fi-wrap"><input id="saleVillage" placeholder="গ্রাম/এলাকা" class="fi-input"></div></div>
+              </div>
+              <div class="fi"><label class="fi-label" for="saleNote">নোট</label><div class="fi-wrap"><input id="saleNote" placeholder="বিশেষ নির্দেশনা..." class="fi-input"></div></div>
+
+              <label class="fi-label" style="margin:0 0 8px">পেমেন্ট পদ্ধতি</label>
+              <div class="pay-methods">
+                <button type="button" class="pmb active-method" data-method="সম্পূর্ণ নগদ"><i class="fa-solid fa-money-bill-wave"></i><span>সম্পূর্ণ নগদ</span></button>
+                <button type="button" class="pmb" data-method="মোবাইল ব্যাংকিং"><i class="fa-solid fa-mobile-screen"></i><span>মোবাইল ব্যাংকিং</span></button>
+                <button type="button" class="pmb" data-method="আংশিক"><i class="fa-solid fa-split"></i><span>আংশিক</span></button>
+                <button type="button" class="pmb" data-method="সম্পূর্ণ বাকি"><i class="fa-solid fa-clock"></i><span>সম্পূর্ণ বাকি</span></button>
+              </div>
+              <input type="hidden" id="saleMethod" value="সম্পূর্ণ নগদ">
+
+              <div id="partialPayFields" style="display:none">
+                <div class="fg">
+                  <div class="fi"><label class="fi-label" for="salePaidAmount">প্রদত্ত পরিমাণ (৳)</label><div class="fi-wrap"><input id="salePaidAmount" type="number" placeholder="0" min="0" oninput="calcPartialDue()" class="fi-input"></div></div>
+                  <div class="fi"><label class="fi-label" for="saleRemaining">বাকি পরিমাণ (৳)</label><div class="fi-wrap"><input id="saleRemaining" type="number" readonly class="fi-input" style="background:var(--surface-2)"></div></div>
+                </div>
+                <div class="fi"><label class="fi-label" for="saleDueDate">বাকি পরিশোধের তারিখ</label><div class="fi-wrap"><input id="saleDueDate" type="date" class="fi-input"></div></div>
+              </div>
+              <div id="fullDueFields" style="display:none">
+                <div class="fi"><label class="fi-label" for="saleDueDateFull">পরিশোধের তারিখ</label><div class="fi-wrap"><input id="saleDueDateFull" type="date" class="fi-input"></div></div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn btn-primary btn-full" type="submit"><i class="fa-solid fa-check-circle"></i> বিক্রয় সম্পন্ন করুন</button>
+                <button class="btn btn-ghost" type="button" id="printInvoiceBtn"><i class="fa-solid fa-print"></i> ইনভয়েস</button>
+              </div>
+            </form>
+
+            <!-- Sales history -->
+            <div class="card-head" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+              <h3><i class="fa-solid fa-receipt"></i> বিক্রয় ইতিহাস</h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="salesFilterType" class="mini-select">
+                  <option value="">সব ধরন</option>
+                  <option value="খুচরা">খুচরা</option>
+                  <option value="পাইকারি">পাইকারি</option>
+                </select>
+                <button class="btn btn-sm btn-ghost" id="toggleAllHistory" type="button">সব ইতিহাস</button>
+              </div>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th>তারিখ</th><th>পণ্য</th><th>ক্রেতা</th><th>পরিমাণ</th><th>মোট</th><th>লাভ</th><th>ধরন</th><th>পেমেন্ট</th><th></th></tr></thead>
+                <tbody id="salesTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ DUES ═══ -->
+      <section class="sec" id="dues">
+        <div class="card">
+          <div class="card-head"><h3><i class="fa-solid fa-plus-circle"></i> নতুন বাকি যোগ করুন</h3></div>
+          <form id="dueForm" class="pform" novalidate>
+            <div class="fg fg-3">
+              <div class="fi"><label class="fi-label" for="dCustomer">ক্রেতার নাম <span class="req">*</span></label><div class="fi-wrap"><input id="dCustomer" placeholder="নাম" required class="fi-input"></div></div>
+              <div class="fi"><label class="fi-label" for="dPhone">মোবাইল</label><div class="fi-wrap"><input id="dPhone" placeholder="মোবাইল নম্বর" class="fi-input" type="tel"></div></div>
+              <div class="fi"><label class="fi-label" for="dVillage">গ্রাম</label><div class="fi-wrap"><input id="dVillage" placeholder="গ্রাম/এলাকা" class="fi-input"></div></div>
+            </div>
+            <div class="fg fg-3">
+              <div class="fi"><label class="fi-label" for="dProduct">পণ্যের বিবরণ</label><div class="fi-wrap"><input id="dProduct" placeholder="পণ্য" class="fi-input"></div></div>
+              <div class="fi"><label class="fi-label" for="dAmount">বাকির পরিমাণ (৳) <span class="req">*</span></label><div class="fi-wrap"><input id="dAmount" type="number" placeholder="০" required min="1" class="fi-input"></div></div>
+              <div class="fi"><label class="fi-label" for="dDueDate">পরিশোধের তারিখ</label><div class="fi-wrap"><input id="dDueDate" type="date" class="fi-input"></div></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit"><i class="fa-solid fa-plus"></i> বাকি যোগ করুন</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-list"></i> বাকি তালিকা</h3>
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="dueSearch" placeholder="নাম বা মোবাইল খুঁজুন...">
+            </div>
+          </div>
+          <!-- Due summary -->
+          <div class="due-summary">
+            <div class="ds-item"><span>মোট বকেয়া</span><strong class="ds-red" id="dueSumTotal">৳০</strong></div>
+            <div class="ds-div"></div>
+            <div class="ds-item"><span>মোট আদায়</span><strong class="ds-green" id="dueSumPaid">৳০</strong></div>
+            <div class="ds-div"></div>
+            <div class="ds-item"><span>বকেয়া গ্রাহক</span><strong id="dueSumCount">০ জন</strong></div>
+          </div>
+          <div id="dueCardsList" class="due-list"></div>
+        </div>
+      </section>
+
+      <!-- ═══ ACCOUNTS ═══ -->
+      <section class="sec" id="accounts">
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-scale-balanced"></i> হিসাব সারসংক্ষেপ</h3>
+            <select id="accPeriod" class="mini-select" onchange="renderAccounts()">
+              <option value="today">আজকের</option>
+              <option value="month">এই মাস</option>
+              <option value="all">সব সময়</option>
+            </select>
+          </div>
+          <div class="acc-grid" id="accSummary"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3><i class="fa-solid fa-chart-bar"></i> বিক্রয় বিভাজন</h3></div>
+          <div class="chart-wrap" id="salesBreakdown"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-hand-holding-dollar"></i> বাকি আদায়ের ইতিহাস</h3>
+            <button class="btn btn-sm btn-danger" id="clearOldCollectionsBtn" type="button" style="display:none"><i class="fa-solid fa-trash"></i> পুরোনো মুছুন</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>ক্রেতা</th><th>পণ্য</th><th>আদায়কৃত</th><th>সময়</th></tr></thead>
+              <tbody id="todayCollectionTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ REPORTS ═══ -->
+      <section class="sec" id="reports">
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-chart-column"></i> ব্যবসায়িক রিপোর্ট</h3>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" id="dailyPngBtn" type="button"><i class="fa-solid fa-image"></i> দৈনিক PNG</button>
+              <button class="btn btn-sm btn-sky" id="monthlyPngBtn" type="button"><i class="fa-solid fa-calendar-days"></i> মাসিক PNG</button>
+              <button class="btn btn-sm btn-ghost" onclick="window.print()" type="button"><i class="fa-solid fa-print"></i> প্রিন্ট</button>
+            </div>
+          </div>
+
+          <!-- Date range download -->
+          <div class="date-report-bar">
+            <div class="drb-title"><i class="fa-solid fa-calendar-check"></i> তারিখ অনুযায়ী রিপোর্ট ডাউনলোড</div>
+            <div class="drb-row">
+              <div class="drb-field">
+                <label for="reportStartDate">শুরুর তারিখ</label>
+                <input type="date" id="reportStartDate" class="drb-date">
+              </div>
+              <div class="drb-field">
+                <label for="reportEndDate">শেষের তারিখ</label>
+                <input type="date" id="reportEndDate" class="drb-date">
+              </div>
+              <div class="drb-field" style="justify-content:flex-end">
+                <button class="btn btn-primary" id="downloadDateReportBtn" type="button"><i class="fa-solid fa-download"></i> রিপোর্ট ডাউনলোড</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rpt-filters">
+            <button class="rft active" type="button" data-report-filter="all"><i class="fa-solid fa-infinity"></i> সব সময়</button>
+            <button class="rft" type="button" data-report-filter="daily"><i class="fa-solid fa-calendar-day"></i> আজকের</button>
+            <button class="rft" type="button" data-report-filter="monthly"><i class="fa-solid fa-calendar"></i> এই মাস</button>
+          </div>
+
+          <div id="reportContent">
+            <div class="rpt-kpi">
+              <div class="rk green"><div class="rk-ic"><i class="fa-solid fa-sack-dollar"></i></div><div class="rk-lbl">মোট বিক্রয়</div><div class="rk-val" id="rSales">৳০</div></div>
+              <div class="rk green"><div class="rk-ic"><i class="fa-solid fa-arrow-trend-up"></i></div><div class="rk-lbl">মোট লাভ</div><div class="rk-val" id="rProfit">৳০</div></div>
+              <div class="rk sky"><div class="rk-ic"><i class="fa-solid fa-store"></i></div><div class="rk-lbl">পাইকারি বিক্রয়</div><div class="rk-val" id="rWholesale">৳০</div></div>
+              <div class="rk amber"><div class="rk-ic"><i class="fa-solid fa-basket-shopping"></i></div><div class="rk-lbl">খুচরা বিক্রয়</div><div class="rk-val" id="rRetail">৳০</div></div>
+              <div class="rk teal"><div class="rk-ic"><i class="fa-solid fa-money-bill-wave"></i></div><div class="rk-lbl">নগদ প্রাপ্ত</div><div class="rk-val" id="rCollected">৳০</div></div>
+              <div class="rk amber"><div class="rk-ic"><i class="fa-solid fa-clock"></i></div><div class="rk-lbl">বাকি বিক্রয়</div><div class="rk-val" id="rDueSales">৳০</div></div>
+              <div class="rk green"><div class="rk-ic"><i class="fa-solid fa-hand-holding-dollar"></i></div><div class="rk-lbl">বাকি আদায়</div><div class="rk-val" id="rDueCollection">৳০</div></div>
+              <div class="rk rose"><div class="rk-ic"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="rk-lbl">বাকি বকেয়া</div><div class="rk-val" id="rDueLeft">৳০</div></div>
+            </div>
+
+            <div class="rpt-charts">
+              <div>
+                <div class="rpt-chart-title"><i class="fa-solid fa-seedling" style="color:#22c55e"></i> সর্বাধিক বিক্রিত বীজ</div>
+                <div id="topSeedsList" class="chart-wrap"></div>
+              </div>
+              <div>
+                <div class="rpt-chart-title"><i class="fa-solid fa-flask" style="color:#38bdf8"></i> সর্বাধিক বিক্রিত কীটনাশক</div>
+                <div id="topPestsList" class="chart-wrap"></div>
+              </div>
+            </div>
+
+            <div class="rpt-insights">
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-trophy" style="color:#f59e0b"></i> সেরা পণ্য</div><div class="ri-v" id="rTopProduct">-</div></div>
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-boxes-stacked"></i> বিক্রিত পরিমাণ</div><div class="ri-v" id="rSoldQty">০</div></div>
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-receipt"></i> বিক্রয় সংখ্যা</div><div class="ri-v" id="rSaleCount">০</div></div>
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-seedling" style="color:#22c55e"></i> বীজ বিক্রয়</div><div class="ri-v" id="rSeedSales">৳০</div></div>
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-flask" style="color:#38bdf8"></i> কীটনাশক বিক্রয়</div><div class="ri-v" id="rPestSales">৳০</div></div>
+              <div class="ri"><div class="ri-l"><i class="fa-solid fa-coins" style="color:#38bdf8"></i> পাইকারি লাভ</div><div class="ri-v" id="rWholesaleProfit">৳০</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SETTINGS ═══ -->
+      <section class="sec" id="settings">
+        <div class="card">
+          <div class="card-head"><h3><i class="fa-solid fa-sliders"></i> স্টোর সেটিংস</h3></div>
+          <form class="pform" id="settingsForm" novalidate>
+            <div class="fg">
+              <div class="fi"><label class="fi-label" for="shopName">স্টোরের নাম</label><div class="fi-wrap"><input id="shopName" placeholder="স্টোরের নাম" class="fi-input"></div></div>
+              <div class="fi"><label class="fi-label" for="shopAddress">ঠিকানা</label><div class="fi-wrap"><input id="shopAddress" placeholder="স্টোরের ঠিকানা" class="fi-input"></div></div>
+            </div>
+            <div class="fg">
+              <div class="fi"><label class="fi-label" for="shopPhone">ফোন নম্বর</label><div class="fi-wrap"><input id="shopPhone" placeholder="ফোন নম্বর" class="fi-input" type="tel"></div></div>
+              <div class="fi"><label class="fi-label" for="invoiceFooter">ইনভয়েস ফুটার</label><div class="fi-wrap"><input id="invoiceFooter" placeholder="ইনভয়েস ফুটার" class="fi-input"></div></div>
+            </div>
+            <div class="fg">
+              <div class="fi"><label class="fi-label" for="adminUser">অ্যাডমিন ইউজারনেম</label><div class="fi-wrap"><input id="adminUser" placeholder="Username" class="fi-input"></div></div>
+              <div class="fi"><label class="fi-label" for="adminPass">অ্যাডমিন পাসওয়ার্ড</label><div class="fi-wrap"><input id="adminPass" type="password" placeholder="Password" class="fi-input"></div></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> সেটিংস সংরক্ষণ</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav" aria-label="মোবাইল নেভিগেশন">
+      <button class="bnb active" data-section="dashboard" type="button"><i class="fa-solid fa-gauge-high"></i><span>হোম</span></button>
+      <button class="bnb" data-section="products" type="button"><i class="fa-solid fa-seedling"></i><span>স্টক</span></button>
+      <button class="bnb bnb-sale" data-section="sales" type="button"><i class="fa-solid fa-cart-shopping"></i><span>বিক্রয়</span></button>
+      <button class="bnb" data-section="dues" type="button"><i class="fa-solid fa-hand-holding-dollar"></i><span>বাকি</span></button>
+      <button class="bnb" data-section="reports" type="button"><i class="fa-solid fa-chart-column"></i><span>রিপোর্ট</span></button>
+    </nav>
+  </div>
+
+  <!-- NOTIFICATION PANEL -->
+  <div class="notif-overlay" id="notificationPanel" role="dialog" aria-modal="true" aria-label="নোটিফিকেশন প্যানেল">
+    <div class="notif-panel">
+      <div class="notif-head">
+        <h3><i class="fa-regular fa-bell"></i> নোটিফিকেশন</h3>
+        <div class="notif-actions">
+          <button id="clearNotifications" type="button" title="সব মুছুন" aria-label="সব নোটিফিকেশন মুছুন"><i class="fa-regular fa-trash-can"></i></button>
+          <button id="closeNotification" type="button" aria-label="বন্ধ করুন"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div id="notificationList" class="notif-body"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- INVOICE PRINT -->
+  <div class="invoice-print" id="invoicePrint"></div>
+
+  <!-- CANVAS -->
+  <canvas id="reportCanvas" style="display:none" aria-hidden="true"></canvas>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
