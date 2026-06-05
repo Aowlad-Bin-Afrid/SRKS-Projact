@@ -1768,10 +1768,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .rds-btn { align-self:flex-end; }
 @media(max-width:640px) {
-  .rds-fields { flex-direction:column; }
+  .rds-fields{
+    display: flex;
+    gap: 10px;
+   }
+
+  .rds-fields > *{
+    flex: 1;
+   }
   .rds-sep { display:none; }
   .rds-btn { width:100%; justify-content:center; }
-}
+   }
 
 /* ─── Withdraw System ────────────────────────────────────── */
 .withdraw-balance-badge {
