@@ -187,20 +187,66 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
           <div id="dueReminderList"></div>
         </div>
 
-        <!-- KPI strip -->
-        <div class="kpi-strip">
-          <div class="kpi-card kpi-primary">
-            <div class="kpi-ico"><i class="fa-solid fa-sack-dollar"></i></div>
-            <div class="kpi-body">
-              <span>আজকের বিক্রয়</span>
-              <strong id="todaySales">৳০</strong>
+        <!-- নগদ ক্যাশ ব্যানার -->
+        <div class="cash-banner" id="cashBanner">
+          <div class="cash-banner-left">
+            <div class="cash-icon"><i class="fa-solid fa-vault"></i></div>
+            <div>
+              <div class="cash-label">দোকানে বর্তমান নগদ টাকা</div>
+              <div class="cash-sublabel">শুধুমাত্র নগদ  বিক্রয় থেকে আয়</div>
             </div>
-            <div class="kpi-badge up"><i class="fa-solid fa-arrow-trend-up"></i></div>
           </div>
+          <div class="cash-amount" id="cashInHand">৳০</div>
+        </div>
+
+        <!-- আজকের বিক্রয় বিস্তারিত কার্ড -->
+        <div class="kpi-section-label"><i class="fa-solid fa-chart-line"></i> আজকের বিক্রয় সারসংক্ষেপ</div>
+        <div class="today-sales-card">
+          <div class="tsc-header">
+            <div class="tsc-header-left">
+              <div class="tsc-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+              <div>
+                <div class="tsc-title">আজকের মোট বিক্রয়</div>
+                <div class="tsc-subtitle" id="todaySaleCountLabel">০টি বিক্রয়</div>
+              </div>
+            </div>
+            <div class="tsc-main-amount" id="todaySales">৳০</div>
+          </div>
+          <div class="tsc-breakdown">
+            <div class="tsc-item tsc-cash">
+              <div class="tsc-item-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+              <div class="tsc-item-body">
+                <span>নগদ বিক্রয়</span>
+                <strong id="todayCashSalesCard">৳০</strong>
+              </div>
+              <div class="tsc-item-sub">
+                <span>নগদে যোগ</span>
+                <b id="todayCashAddedCard">৳০</b>
+              </div>
+            </div>
+            <div class="tsc-item tsc-due">
+              <div class="tsc-item-icon"><i class="fa-solid fa-clock"></i></div>
+              <div class="tsc-item-body">
+                <span>বাকি বিক্রয়</span>
+                <strong id="todayDueSalesCard">৳০</strong>
+              </div>
+            </div>
+            <div class="tsc-item tsc-partial">
+              <div class="tsc-item-icon"><i class="fa-solid fa-split"></i></div>
+              <div class="tsc-item-body">
+                <span>আংশিক পরিশোধ</span>
+                <strong id="todayPartialSalesCard">৳০</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI strip - Row 1 -->
+        <div class="kpi-strip">
           <div class="kpi-card kpi-emerald">
             <div class="kpi-ico"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
             <div class="kpi-body">
-              <span>আজকের লাভ</span>
+              <span>আজকের মোট লাভ</span>
               <strong id="todayProfit">৳০</strong>
             </div>
           </div>
@@ -221,15 +267,62 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
           <div class="kpi-card kpi-rose">
             <div class="kpi-ico"><i class="fa-solid fa-file-invoice-dollar"></i></div>
             <div class="kpi-body">
-              <span>মোট বকেয়া</span>
+              <span>মোট বকেয়া (সব)</span>
               <strong id="totalDue">৳০</strong>
             </div>
           </div>
           <div class="kpi-card kpi-teal">
             <div class="kpi-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
             <div class="kpi-body">
-              <span>আজ আদায়</span>
+              <span>আজ আদায়কৃত</span>
               <strong id="todayCollection">৳০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-primary">
+            <div class="kpi-ico"><i class="fa-solid fa-mobile-screen"></i></div>
+            <div class="kpi-body">
+              <span>মোবাইল ব্যাংকিং</span>
+              <strong id="todayMobileSales">৳০</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Row 2: স্টক ও পণ্য তথ্য -->
+        <div class="kpi-section-label"><i class="fa-solid fa-boxes-stacked"></i> স্টক ও পণ্য তথ্য</div>
+        <div class="kpi-strip kpi-strip-5">
+          <div class="kpi-card kpi-emerald">
+            <div class="kpi-ico"><i class="fa-solid fa-seedling"></i></div>
+            <div class="kpi-body">
+              <span>মোট পণ্য সংখ্যা</span>
+              <strong id="totalProductCount">০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-sky">
+            <div class="kpi-ico"><i class="fa-solid fa-leaf"></i></div>
+            <div class="kpi-body">
+              <span>বীজ পণ্য সংখ্যা</span>
+              <strong id="seedProductCount">০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-ico"><i class="fa-solid fa-flask"></i></div>
+            <div class="kpi-body">
+              <span>কীটনাশক পণ্য সংখ্যা</span>
+              <strong id="pestProductCount">০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-rose">
+            <div class="kpi-ico"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="kpi-body">
+              <span>কম স্টক পণ্য</span>
+              <strong id="lowStockCount">০</strong>
+            </div>
+          </div>
+          <div class="kpi-card kpi-teal">
+            <div class="kpi-ico"><i class="fa-solid fa-warehouse"></i></div>
+            <div class="kpi-body">
+              <span>মোট স্টক মূল্য</span>
+              <strong id="totalStockValue">৳০</strong>
             </div>
           </div>
         </div>
@@ -238,25 +331,27 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
         <div class="dash-profit-row">
           <div class="profit-mini sky">
             <i class="fa-solid fa-coins"></i>
-            <span>পাইকারি লাভ</span>
-            <strong id="wholesaleDashProfit">৳০</strong>
+            <div><span>পাইকারি লাভ (আজ)</span>
+            <strong id="wholesaleDashProfit">৳০</strong></div>
           </div>
           <div class="profit-mini amber">
             <i class="fa-solid fa-coins"></i>
-            <span>খুচরা লাভ</span>
-            <strong id="retailDashProfit">৳০</strong>
+            <div><span>খুচরা লাভ (আজ)</span>
+            <strong id="retailDashProfit">৳০</strong></div>
           </div>
-          <div class="profit-mini warn">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <span>কম স্টক পণ্য</span>
-            <strong id="lowStockCount">০</strong>
+          <div class="profit-mini green">
+            <i class="fa-solid fa-seedling"></i>
+            <div><span>বীজ বিক্রয় (আজ)</span>
+            <strong id="todaySeedSales">৳০</strong></div>
           </div>
-          <div class="profit-mini purple">
-            <i class="fa-solid fa-warehouse"></i>
-            <span>স্টক মূল্য</span>
-            <strong id="totalStockValue">৳০</strong>
+          <div class="profit-mini teal">
+            <i class="fa-solid fa-flask"></i>
+            <div><span>কীটনাশক বিক্রয় (আজ)</span>
+            <strong id="todayPestSales">৳০</strong></div>
           </div>
         </div>
+        <span id="todayCashSales" style="display:none"></span>
+        <span id="todayMobileSales" style="display:none"></span>
 
         <!-- Two col -->
         <div class="dash-grid">
@@ -283,7 +378,67 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
 
       <!-- ═══ PRODUCTS ═══ -->
       <section class="sec" id="products">
+
+        <!-- স্টক সারসংক্ষেপ -->
+        <div class="stock-summary-bar">
+          <div class="ssb-item green">
+            <div class="ssb-ico"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div><div class="ssb-label">মোট পণ্য</div><div class="ssb-val" id="stockSummaryTotal">০</div></div>
+          </div>
+          <div class="ssb-item sky">
+            <div class="ssb-ico"><i class="fa-solid fa-seedling"></i></div>
+            <div><div class="ssb-label">বীজ পণ্য</div><div class="ssb-val" id="stockSummarySeed">০</div></div>
+          </div>
+          <div class="ssb-item amber">
+            <div class="ssb-ico"><i class="fa-solid fa-flask"></i></div>
+            <div><div class="ssb-label">কীটনাশক</div><div class="ssb-val" id="stockSummaryPest">০</div></div>
+          </div>
+          <div class="ssb-item rose">
+            <div class="ssb-ico"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div><div class="ssb-label">কম স্টক</div><div class="ssb-val" id="stockSummaryLow">০</div></div>
+          </div>
+          <div class="ssb-item teal">
+            <div class="ssb-ico"><i class="fa-solid fa-warehouse"></i></div>
+            <div><div class="ssb-label">স্টক মূল্য</div><div class="ssb-val" id="stockSummaryValue">৳০</div></div>
+          </div>
+          <button class="btn btn-primary ssb-add-btn" id="openProductFormBtn" type="button">
+            <i class="fa-solid fa-plus"></i> নতুন পণ্য যোগ করুন
+          </button>
+        </div>
+
+        <!-- Product Table (সামনে দেখাবে) -->
         <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-boxes-stacked"></i> পণ্য তালিকা</h3>
+            <div class="card-actions">
+              <select id="productFilterCat" class="mini-select">
+                <option value="">সব পণ্য</option>
+                <option value="বীজ">🌱 বীজ</option>
+                <option value="কীটনাশক">🧪 কীটনাশক</option>
+              </select>
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="productSearch" placeholder="পণ্য খুঁজুন...">
+              </div>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>পণ্যের নাম</th><th>ধরন</th><th>ব্র্যান্ড</th><th>ক্রয়মূল্য</th><th>খুচরামূল্য</th><th>পাইকারি</th><th>স্টক</th><th>মেয়াদ</th><th>অ্যাকশন</th></tr></thead>
+              <tbody id="productTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Product Form (ক্লিক করলে খুলবে) -->
+        <div class="card product-form-card" id="productFormCard" style="display:none">
+          <div class="card-head">
+            <h3 id="productFormTitle"><i class="fa-solid fa-plus-circle"></i> নতুন পণ্য যোগ করুন</h3>
+            <button class="btn btn-sm btn-ghost" id="closeProductFormBtn" type="button">
+              <i class="fa-solid fa-xmark"></i> বন্ধ করুন
+            </button>
+          </div>
+
           <div class="tab-row">
             <button class="tab-btn active-tab" id="tabManual" type="button" onclick="switchProductTab('manual')">
               <i class="fa-solid fa-pen-to-square"></i> ম্যানুয়াল ইনপুট
@@ -295,9 +450,6 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
 
           <!-- Manual pane -->
           <div class="tab-pane active-pane" id="paneManual">
-            <div class="card-head" style="border-top:none">
-              <h3><i class="fa-solid fa-plus-circle"></i> নতুন পণ্য যোগ করুন</h3>
-            </div>
             <form class="pform" id="productForm" novalidate>
               <input type="hidden" id="productId">
               <div class="fg">
@@ -372,30 +524,6 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
               <button class="btn btn-success" type="button" id="autoFillBtn" style="display:none"><i class="fa-solid fa-check-circle"></i> ফর্মে পূরণ ও সংরক্ষণ</button>
               <button class="btn btn-ghost" type="button" id="autoClearBtn"><i class="fa-solid fa-eraser"></i> পরিষ্কার</button>
             </div>
-          </div>
-        </div>
-
-        <!-- Product Table -->
-        <div class="card">
-          <div class="card-head">
-            <h3><i class="fa-solid fa-boxes-stacked"></i> পণ্য তালিকা</h3>
-            <div class="card-actions">
-              <select id="productFilterCat" class="mini-select">
-                <option value="">সব পণ্য</option>
-                <option value="বীজ">🌱 বীজ</option>
-                <option value="কীটনাশক">🧪 কীটনাশক</option>
-              </select>
-              <div class="search-box">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="productSearch" placeholder="পণ্য খুঁজুন...">
-              </div>
-            </div>
-          </div>
-          <div class="tbl-wrap">
-            <table class="tbl">
-              <thead><tr><th>পণ্যের নাম</th><th>ধরন</th><th>ব্র্যান্ড</th><th>ক্রয়মূল্য</th><th>খুচরামূল্য</th><th>পাইকারি</th><th>স্টক</th><th>মেয়াদ</th><th>অ্যাকশন</th></tr></thead>
-              <tbody id="productTable"></tbody>
-            </table>
           </div>
         </div>
       </section>
@@ -483,25 +611,42 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
                 <button class="btn btn-ghost" type="button" id="printInvoiceBtn"><i class="fa-solid fa-print"></i> ইনভয়েস</button>
               </div>
             </form>
+          </div>
+        </div>
 
-            <!-- Sales history -->
-            <div class="card-head" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-              <h3><i class="fa-solid fa-receipt"></i> বিক্রয় ইতিহাস</h3>
-              <div style="display:flex;gap:8px;align-items:center">
-                <select id="salesFilterType" class="mini-select">
-                  <option value="">সব ধরন</option>
-                  <option value="খুচরা">খুচরা</option>
-                  <option value="পাইকারি">পাইকারি</option>
-                </select>
-                <button class="btn btn-sm btn-ghost" id="toggleAllHistory" type="button">সব ইতিহাস</button>
-              </div>
+        <!-- বিক্রয় ইতিহাস — আলাদা সেকশন -->
+        <div class="card sales-history-section">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-receipt"></i> বিক্রয় ইতিহাস</h3>
+            <div class="card-actions">
+              <select id="salesFilterType" class="mini-select">
+                <option value="">সব ধরন</option>
+                <option value="খুচরা">খুচরা</option>
+                <option value="পাইকারি">পাইকারি</option>
+              </select>
+              <button class="btn btn-sm btn-ghost" id="toggleAllHistory" type="button">সব ইতিহাস</button>
             </div>
-            <div class="tbl-wrap">
-              <table class="tbl">
-                <thead><tr><th>তারিখ</th><th>পণ্য</th><th>ক্রেতা</th><th>পরিমাণ</th><th>মোট</th><th>লাভ</th><th>ধরন</th><th>পেমেন্ট</th><th></th></tr></thead>
-                <tbody id="salesTable"></tbody>
-              </table>
-            </div>
+          </div>
+          <div class="sales-history-info" id="salesHistoryInfo">
+            <i class="fa-solid fa-calendar-day"></i> আজকের বিক্রয় দেখানো হচ্ছে — সব দেখতে উপরের বাটন চাপুন
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl sales-tbl">
+              <thead>
+                <tr>
+                  <th>তারিখ ও সময়</th>
+                  <th>পণ্য</th>
+                  <th>ক্রেতা</th>
+                  <th class="tbl-center">পরিমাণ</th>
+                  <th class="tbl-right">মোট</th>
+                  <th class="tbl-right">লাভ</th>
+                  <th class="tbl-center">ধরন</th>
+                  <th class="tbl-center">পেমেন্ট</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="salesTable"></tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -590,21 +735,28 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
             </div>
           </div>
 
-          <!-- Date range download -->
-          <div class="date-report-bar">
-            <div class="drb-title"><i class="fa-solid fa-calendar-check"></i> তারিখ অনুযায়ী রিপোর্ট ডাউনলোড</div>
-            <div class="drb-row">
-              <div class="drb-field">
-                <label for="reportStartDate">শুরুর তারিখ</label>
+          <!-- Date range download - improved design -->
+          <div class="report-date-section">
+            <div class="rds-header">
+              <div class="rds-icon"><i class="fa-solid fa-calendar-check"></i></div>
+              <div>
+                <div class="rds-title">তারিখ অনুযায়ী রিপোর্ট</div>
+                <div class="rds-subtitle">নিজের পছন্দমতো তারিখ বেছে রিপোর্ট ডাউনলোড করুন</div>
+              </div>
+            </div>
+            <div class="rds-fields">
+              <div class="rds-field-group">
+                <label class="fi-label" for="reportStartDate">শুরুর তারিখ</label>
                 <input type="date" id="reportStartDate" class="drb-date">
               </div>
-              <div class="drb-field">
-                <label for="reportEndDate">শেষের তারিখ</label>
+              <div class="rds-sep"><i class="fa-solid fa-arrow-right"></i></div>
+              <div class="rds-field-group">
+                <label class="fi-label" for="reportEndDate">শেষের তারিখ</label>
                 <input type="date" id="reportEndDate" class="drb-date">
               </div>
-              <div class="drb-field" style="justify-content:flex-end">
-                <button class="btn btn-primary" id="downloadDateReportBtn" type="button"><i class="fa-solid fa-download"></i> রিপোর্ট ডাউনলোড</button>
-              </div>
+              <button class="btn btn-primary rds-btn" id="downloadDateReportBtn" type="button">
+                <i class="fa-solid fa-download"></i> রিপোর্ট ডাউনলোড
+              </button>
             </div>
           </div>
 
@@ -670,6 +822,57 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
               <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> সেটিংস সংরক্ষণ</button>
             </div>
           </form>
+        </div>
+
+        <!-- Withdraw System -->
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-vault"></i> নগদ টাকা উত্তোলন (Withdraw)</h3>
+            <div class="withdraw-balance-badge">
+              <span>উত্তোলনযোগ্য নগদ:</span>
+              <strong id="withdrawableBalance">৳০</strong>
+            </div>
+          </div>
+          <div class="pform">
+            <div class="withdraw-form-grid">
+              <div class="fi">
+                <label class="fi-label" for="withdrawAmount">উত্তোলনের পরিমাণ (৳) <span class="req">*</span></label>
+                <div class="fi-wrap">
+                  <i class="fa-solid fa-money-bill-wave fi-icon"></i>
+                  <input type="number" id="withdrawAmount" placeholder="০" min="1" class="fi-input" style="padding-left:42px">
+                </div>
+              </div>
+              <div class="fi">
+                <label class="fi-label" for="withdrawDate">তারিখ <span class="req">*</span></label>
+                <div class="fi-wrap">
+                  <input type="date" id="withdrawDate" class="fi-input">
+                </div>
+              </div>
+              <div class="fi">
+                <label class="fi-label" for="withdrawNote">কারণ / নোট</label>
+                <div class="fi-wrap">
+                  <i class="fa-solid fa-pen fi-icon"></i>
+                  <input type="text" id="withdrawNote" placeholder="উত্তোলনের কারণ লিখুন..." class="fi-input" style="padding-left:42px">
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="button" id="withdrawBtn">
+                <i class="fa-solid fa-arrow-up-from-bracket"></i> উত্তোলন করুন
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Withdraw History -->
+        <div class="card">
+          <div class="card-head">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> উত্তোলনের ইতিহাস</h3>
+            <div class="withdraw-total-badge">
+              মোট উত্তোলন: <strong id="totalWithdrawnAmt">৳০</strong>
+            </div>
+          </div>
+          <div id="withdrawHistoryList" class="withdraw-history-list"></div>
         </div>
       </section>
 
