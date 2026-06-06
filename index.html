@@ -201,41 +201,30 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
 
         <!-- আজকের বিক্রয় বিস্তারিত কার্ড -->
         <div class="kpi-section-label"><i class="fa-solid fa-chart-line"></i> আজকের বিক্রয় সারসংক্ষেপ</div>
-        <div class="today-sales-card">
+        <div class="today-sales-card" onclick="showCardDetail('todaySales')" style="cursor:pointer" title="বিস্তারিত দেখুন">
           <div class="tsc-header">
             <div class="tsc-header-left">
               <div class="tsc-icon"><i class="fa-solid fa-sack-dollar"></i></div>
               <div>
-                <div class="tsc-title">আজকের মোট বিক্রয়</div>
+                <div class="tsc-title">আজকের মোট বিক্রয় <span class="detail-hint"><i class="fa-solid fa-circle-info"></i></span></div>
                 <div class="tsc-subtitle" id="todaySaleCountLabel">০টি বিক্রয়</div>
               </div>
             </div>
             <div class="tsc-main-amount" id="todaySales">৳০</div>
           </div>
           <div class="tsc-breakdown">
-            <div class="tsc-item tsc-cash">
+            <div class="tsc-item tsc-cash" onclick="event.stopPropagation();showCardDetail('cashSales')" style="cursor:pointer">
               <div class="tsc-item-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
               <div class="tsc-item-body">
-                <span>নগদ বিক্রয়</span>
+                <span>নগদ বিক্রয় (নগদ+আংশিক) <i class="fa-solid fa-chevron-right" style="font-size:.6rem;opacity:.5"></i></span>
                 <strong id="todayCashSalesCard">৳০</strong>
               </div>
-              <div class="tsc-item-sub">
-                <span>নগদে যোগ</span>
-                <b id="todayCashAddedCard">৳০</b>
-              </div>
             </div>
-            <div class="tsc-item tsc-due">
+            <div class="tsc-item tsc-due" onclick="event.stopPropagation();showCardDetail('dueSales')" style="cursor:pointer">
               <div class="tsc-item-icon"><i class="fa-solid fa-clock"></i></div>
               <div class="tsc-item-body">
-                <span>বাকি বিক্রয়</span>
+                <span>বাকি বিক্রয় <i class="fa-solid fa-chevron-right" style="font-size:.6rem;opacity:.5"></i></span>
                 <strong id="todayDueSalesCard">৳০</strong>
-              </div>
-            </div>
-            <div class="tsc-item tsc-partial">
-              <div class="tsc-item-icon"><i class="fa-solid fa-split"></i></div>
-              <div class="tsc-item-body">
-                <span>আংশিক পরিশোধ</span>
-                <strong id="todayPartialSalesCard">৳০</strong>
               </div>
             </div>
           </div>
@@ -243,45 +232,45 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
 
         <!-- KPI strip - Row 1 -->
         <div class="kpi-strip">
-          <div class="kpi-card kpi-emerald">
+          <div class="kpi-card kpi-emerald" onclick="showCardDetail('todayProfit')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
             <div class="kpi-body">
-              <span>আজকের মোট লাভ</span>
+              <span>আজকের মোট লাভ <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="todayProfit">৳০</strong>
             </div>
           </div>
-          <div class="kpi-card kpi-sky">
+          <div class="kpi-card kpi-sky" onclick="showCardDetail('wholesale')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-store"></i></div>
             <div class="kpi-body">
-              <span>পাইকারি বিক্রয়</span>
+              <span>পাইকারি বিক্রয় <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="wholesaleSales">৳০</strong>
             </div>
           </div>
-          <div class="kpi-card kpi-amber">
+          <div class="kpi-card kpi-amber" onclick="showCardDetail('retail')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-basket-shopping"></i></div>
             <div class="kpi-body">
-              <span>খুচরা বিক্রয়</span>
+              <span>খুচরা বিক্রয় <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="retailSales">৳০</strong>
             </div>
           </div>
-          <div class="kpi-card kpi-rose">
+          <div class="kpi-card kpi-rose" onclick="showCardDetail('totalDue')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-file-invoice-dollar"></i></div>
             <div class="kpi-body">
-              <span>মোট বকেয়া (সব)</span>
+              <span>মোট বকেয়া (সব) <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="totalDue">৳০</strong>
             </div>
           </div>
-          <div class="kpi-card kpi-teal">
+          <div class="kpi-card kpi-teal" onclick="showCardDetail('collection')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
             <div class="kpi-body">
-              <span>আজ আদায়কৃত</span>
+              <span>আজ আদায়কৃত <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="todayCollection">৳০</strong>
             </div>
           </div>
-          <div class="kpi-card kpi-primary">
+          <div class="kpi-card kpi-primary" onclick="showCardDetail('mobile')" style="cursor:pointer">
             <div class="kpi-ico"><i class="fa-solid fa-mobile-screen"></i></div>
             <div class="kpi-body">
-              <span>মোবাইল ব্যাংকিং</span>
+              <span>মোবাইল ব্যাংকিং <i class="fa-solid fa-circle-info" style="font-size:.65rem;opacity:.6"></i></span>
               <strong id="todayMobileSales">৳০</strong>
             </div>
           </div>
@@ -899,6 +888,18 @@ href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48
         </div>
       </div>
       <div id="notificationList" class="notif-body"></div>
+    </div>
+  </div>
+
+  <!-- DETAIL MODAL -->
+  <div class="detail-modal-overlay" id="detailModal" role="dialog" aria-modal="true" style="display:none">
+    <div class="detail-modal">
+      <div class="detail-modal-head">
+        <h3 id="detailModalTitle"><i class="fa-solid fa-list"></i> বিস্তারিত তথ্য</h3>
+        <button class="detail-modal-close" onclick="closeDetailModal()" type="button" aria-label="বন্ধ করুন"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="detail-modal-summary" id="detailModalSummary"></div>
+      <div class="detail-modal-body" id="detailModalBody"></div>
     </div>
   </div>
 
