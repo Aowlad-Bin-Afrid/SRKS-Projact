@@ -1,6 +1,7 @@
 /* =========================================================
    সাইদার রহমান কৃষি সেবা — বীজ ও কীটনাশক ব্যবস্থাপনা
-
+   Agricultural Management System — Seeds & Pesticides
+   [FIXED VERSION — সকল হিসাব-সংক্রান্ত বাগ সমাধান করা হয়েছে]
 ========================================================= */
 
 /* ===================== Firebase Config ===================== */
@@ -27,8 +28,9 @@ const DEFAULT_SETTINGS = {
 /* Sub-categories */
 const SEED_SUBCATS = ["ধানের বীজ","ভুট্টার বীজ","গমের বীজ","সরিষার বীজ","সবজি বীজ","অন্যান্য বীজ"];
 const PEST_SUBCATS = ["পোকানাশক","ছত্রাকনাশক","আগাছানাশক","বৃদ্ধি নিয়ন্ত্রক","অন্যান্য কীটনাশক"];
+const WEIGHT_SUBCATS = ["ভুট্টা","গম","ধান","ডাল","সরিষা","চাল","আটা","লবণ","সার","অন্যান্য খোলা পণ্য"];
 
-const DB_PATHS = { products:"products", sales:"sales", dues:"dues", settings:"settings" };
+const DB_PATHS = { products:"products", sales:"sales", dues:"dues", settings:"settings", withdrawals:"withdrawals" };
 
 let db = null, firebaseReady = false;
 try {
@@ -36,7 +38,6 @@ try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     firebaseReady = true;
-    if (firebase.analytics) firebase.analytics();
   }
 } catch(e) { console.warn("Firebase init:", e); }
 
@@ -149,6 +150,10 @@ function bindRealtimeData(){
       withdrawals=Array.isArray(v)?v.filter(Boolean):Object.values(v);
       setLocal("agri_withdrawals",withdrawals);
       renderWithdrawBalance();
+    } else {
+      withdrawals=[];
+      setLocal("agri_withdrawals",[]);
+      renderWithdrawBalance();
     }
   });
 }
@@ -179,30 +184,54 @@ function updateSeasonLabel(){
 }
 
 /* ===================== Auth ===================== */
+/*
+  সুরক্ষা নোট: এই লগইন সিস্টেম settings থেকে পাসওয়ার্ড যাচাই করে।
+  পূর্ণ নিরাপত্তার জন্য Firebase Authentication ব্যবহার করুন।
+  Settings থেকে পাসওয়ার্ড পরিবর্তন করে নিন (ডিফল্ট "1234" রাখবেন না)।
+*/
 function checkLogin(){
   const logged=localStorage.getItem(KEYS.loggedIn)==="true";
   $("loginPage").style.display=logged?"none":"flex";
   if(logged) $("app").classList.add("show");
   else $("app").classList.remove("show");
 }
-$("loginForm").addEventListener("submit",e=>{
+
+/* ব্রুট ফোর্স সুরক্ষা */
+let loginAttempts=0;
+let loginLockUntil=0;
+
+if($("loginForm")) $("loginForm").addEventListener("submit",e=>{
   e.preventDefault();
+  const now=Date.now();
+  if(now<loginLockUntil){
+    const secs=Math.ceil((loginLockUntil-now)/1000);
+    showToast(`অনেকবার ভুল হয়েছে। ${secs} সেকেন্ড অপেক্ষা করুন।`);
+    return;
+  }
   const u=$("username").value.trim(), p=$("password").value.trim();
   if(u===settings.adminUser && p===settings.adminPass){
+    loginAttempts=0;
     localStorage.setItem(KEYS.loggedIn,"true");
     checkLogin(); showToast("লগইন সফল ✓");
   } else {
-    showToast("ইউজারনেম বা পাসওয়ার্ড ভুল");
+    loginAttempts++;
+    if(loginAttempts>=5){
+      loginLockUntil=Date.now()+30000;
+      loginAttempts=0;
+      showToast("৫ বার ভুল হয়েছে। ৩০ সেকেন্ড অপেক্ষা করুন।");
+    } else {
+      showToast(`ইউজারনেম বা পাসওয়ার্ড ভুল (${loginAttempts}/5)`);
+    }
     $("password").value=""; $("password").focus();
   }
 });
-$("showPass").addEventListener("click",()=>{
+if($("showPass")) $("showPass").addEventListener("click",()=>{
   const p=$("password"), icon=$("showPass").querySelector("i");
   const h=p.type==="password";
   p.type=h?"text":"password";
   if(icon) icon.className=h?"fa-regular fa-eye-slash":"fa-regular fa-eye";
 });
-$("logoutBtn").addEventListener("click",()=>{
+if($("logoutBtn")) $("logoutBtn").addEventListener("click",()=>{
   localStorage.removeItem(KEYS.loggedIn); saleCart=[];
   checkLogin(); showToast("লগআউট সম্পন্ন");
 });
@@ -249,6 +278,10 @@ function bindTopbarEvents(){
     document.body.classList.remove("menu-open");
     ov.classList.remove("show");
   });
+  if($("closePartialReport")) $("closePartialReport").addEventListener("click", closePartialSoldReport);
+  const partialOverlay=$("partialSoldPanel");
+  if(partialOverlay) partialOverlay.addEventListener("click",e=>{ if(e.target===partialOverlay) closePartialSoldReport(); });
+
   $("notificationBtn").addEventListener("click",()=>{
     $("notificationPanel").classList.add("show");
     renderNotifList();
@@ -318,20 +351,27 @@ function renderNotifList(){
 function onMainCatChange(){
   const cat=$("pMainCat").value;
   const sub=$("pSubCat");
+  $("seedFields").style.display="none";
+  $("pestFields").style.display="none";
+  $("weightFields").style.display="none";
   if(cat==="বীজ"){
     sub.innerHTML=`<option value="">সাব-ক্যাটাগরি বেছে নিন</option>`+
       SEED_SUBCATS.map(s=>`<option>${safeText(s)}</option>`).join("");
     $("seedFields").style.display="";
-    $("pestFields").style.display="none";
   } else if(cat==="কীটনাশক"){
     sub.innerHTML=`<option value="">সাব-ক্যাটাগরি বেছে নিন</option>`+
       PEST_SUBCATS.map(s=>`<option>${safeText(s)}</option>`).join("");
-    $("seedFields").style.display="none";
     $("pestFields").style.display="";
+  } else if(cat==="ওজনভিত্তিক"){
+    sub.innerHTML=`<option value="">সাব-ক্যাটাগরি বেছে নিন</option>`+
+      WEIGHT_SUBCATS.map(s=>`<option>${safeText(s)}</option>`).join("");
+    $("weightFields").style.display="";
+    // Auto-set unit from weight unit selector
+    const wu=$("pWeightUnit");
+    if(wu && $("pUnit")) $("pUnit").value=wu.value;
+    if(wu) wu.addEventListener("change",()=>{ if($("pUnit")) $("pUnit").value=wu.value; },{once:false});
   } else {
     sub.innerHTML=`<option value="">প্রথমে প্রধান ক্যাটাগরি বেছে নিন</option>`;
-    $("seedFields").style.display="none";
-    $("pestFields").style.display="none";
   }
 }
 
@@ -352,7 +392,11 @@ function bindFormEvents(){
   $("saleForm").addEventListener("submit",handleSaleSubmit);
   $("addSaleItemBtn").addEventListener("click",addToCart);
   if($("productDropdownSearch"))
-    $("productDropdownSearch").addEventListener("input",renderProductCards);
+    $("productDropdownSearch").addEventListener("input",e=>{
+      const cb=$("clearProdSearch");
+      if(cb) cb.style.display=e.target.value?"":"none";
+      renderProductCards();
+    });
   [$("saleQty"),$("salePrice"),$("saleDiscount")].forEach(el=>{
     if(el) el.addEventListener("input",updateCartTotal);
   });
@@ -423,11 +467,12 @@ async function handleProductSubmit(e){
     sellingPrice:safeNum($("pSelling").value),
     wholesalePrice:safeNum($("pWholesale").value),
     stock:safeNum($("pStock").value),
-    unit:$("pUnit").value.trim()||"প্যাকেট",
+    unit:mainCat==="ওজনভিত্তিক"?($("pWeightUnit")?.value||$("pUnit").value.trim()||"কেজি"):($("pUnit").value.trim()||"প্যাকেট"),
     lowStockLimit:safeNum($("pLimit").value)||5,
     batchNo:$("pBatch").value.trim(),
     mfgDate:$("pMfgDate").value,
     expDate:$("pExpDate").value,
+    isWeightProduct: mainCat==="ওজনভিত্তিক",
     germRate: mainCat==="বীজ"?safeNum($("pGermRate").value):"",
     season:   mainCat==="বীজ"?$("pSeason").value:"",
     cropType: mainCat==="বীজ"?$("pCropType").value.trim():"",
@@ -435,6 +480,8 @@ async function handleProductSubmit(e){
     dosage:   mainCat==="কীটনাশক"?$("pDosage").value.trim():"",
     target:   mainCat==="কীটনাশক"?$("pTarget").value.trim():"",
     warning:  mainCat==="কীটনাশক"?$("pWarning").value.trim():"",
+    bagWeight:mainCat==="ওজনভিত্তিক"?safeNum($("pBagWeight")?.value):"",
+    weightSource:mainCat==="ওজনভিত্তিক"?($("pWeightSource")?.value.trim()||""):"",
     createdAt:existing?.createdAt||new Date().toISOString(),
     updatedAt:new Date().toISOString()
   };
@@ -455,6 +502,7 @@ function resetProductForm(){
   $("productId").value="";
   $("seedFields").style.display="none";
   $("pestFields").style.display="none";
+  if($("weightFields")) $("weightFields").style.display="none";
   $("pSubCat").innerHTML=`<option value="">প্রথমে প্রধান ক্যাটাগরি বেছে নিন</option>`;
 }
 
@@ -486,6 +534,10 @@ function editProduct(id){
     $("pDosage").value=p.dosage||"";
     $("pTarget").value=p.target||"";
     $("pWarning").value=p.warning||"";
+  } else if(p.mainCat==="ওজনভিত্তিক"){
+    if($("pWeightUnit")) $("pWeightUnit").value=p.unit||"কেজি";
+    if($("pBagWeight")) $("pBagWeight").value=p.bagWeight||"";
+    if($("pWeightSource")) $("pWeightSource").value=p.weightSource||"";
   }
   switchSection("products");
   const fc=$("productFormCard"), ob=$("openProductFormBtn");
@@ -507,11 +559,13 @@ function renderProducts(){
   const totalP=products.length;
   const seedP=products.filter(p=>p.mainCat==="বীজ").length;
   const pestP=products.filter(p=>p.mainCat==="কীটনাশক").length;
+  const weightP=products.filter(p=>p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct).length;
   const lowP=products.filter(p=>safeNum(p.stock)<=safeNum(p.lowStockLimit||5)).length;
   const stockVal=products.reduce((s,p)=>s+safeNum(p.stock)*safeNum(p.purchasePrice),0);
   if($("stockSummaryTotal")) $("stockSummaryTotal").textContent=totalP;
   if($("stockSummarySeed"))  $("stockSummarySeed").textContent=seedP;
   if($("stockSummaryPest"))  $("stockSummaryPest").textContent=pestP;
+  if($("stockSummaryWeight")) $("stockSummaryWeight").textContent=weightP;
   if($("stockSummaryLow"))   $("stockSummaryLow").textContent=lowP;
   if($("stockSummaryValue")) $("stockSummaryValue").textContent=money(stockVal);
 
@@ -525,17 +579,23 @@ function renderProducts(){
   });
   tbody.innerHTML=filtered.map(p=>{
     const isSeed=p.mainCat==="বীজ";
+    const isWeight=p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct;
     const expDays=p.expDate?daysUntil(p.expDate):null;
     const expStr=!p.expDate?"-":expDays!==null&&expDays<=30
       ?`<span class="expiry-warning">⚠️ ${p.expDate} (${expDays}d)</span>`
       :`<span class="expiry-ok">${p.expDate}</span>`;
     const stockBadge=safeNum(p.stock)<=safeNum(p.lowStockLimit)
       ?`<span class="badge red">${p.stock} ${p.unit||""}</span>`
-      :`<span class="badge green">${p.stock} ${p.unit||""}</span>`;
+      :`<span class="badge ${isWeight?"purple":"green"}">${p.stock} ${p.unit||""}</span>`;
+    const catBadge=isWeight
+      ?`<span class="product-type-badge weight">⚖️ ওজনভিত্তিক</span>`
+      :isSeed?`<span class="product-type-badge seed">🌱 বীজ</span>`
+      :`<span class="product-type-badge pest">🧪 কীটনাশক</span>`;
     return `<tr>
       <td><b>${safeText(p.name)}</b>${p.variety?`<span class="variety-badge">${safeText(p.variety)}</span>`:""}${p.packSize?`<span class="variety-badge">${safeText(p.packSize)}</span>`:""}
+      ${isWeight?`<span class="weight-prod-tag"><i class="fa-solid fa-weight-hanging"></i></span>`:""}
       </td>
-      <td><span class="product-type-badge ${isSeed?"seed":"pest"}">${isSeed?"🌱 বীজ":"🧪 কীটনাশক"}</span>${p.subCat?`<span class="variety-badge">${safeText(p.subCat)}</span>`:""}</td>
+      <td>${catBadge}${p.subCat?`<span class="variety-badge">${safeText(p.subCat)}</span>`:""}</td>
       <td>${p.brand?`<span class="brand-text-sm">${safeText(p.brand)}</span>`:"-"}</td>
       <td>${money(p.purchasePrice)}</td>
       <td>${money(p.sellingPrice)}</td>
@@ -551,9 +611,116 @@ function renderProducts(){
     </tr>`;
   }).join("")||`<tr><td colspan="9" style="text-align:center;color:var(--text-3);padding:24px">কোনো পণ্য পাওয়া যায়নি</td></tr>`;
   renderProductCards();
+  renderWeightProductsSection();
 }
 
-/* ===================== Sale Type & Cat Filter ===================== */
+/* ===================== Weight Products Section ===================== */
+function renderWeightProductsSection(){
+  const grid=$("weightProductGrid");
+  const badge=$("weightSectionBadge");
+  const empty=$("weightEmptyState");
+  if(!grid) return;
+
+  const weightProds=products.filter(p=>p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct);
+  if(badge) badge.textContent=`${weightProds.length}টি পণ্য`;
+
+  if(!weightProds.length){
+    if(empty) empty.style.display="";
+    grid.innerHTML="";
+    grid.appendChild(empty||document.createElement("div"));
+    return;
+  }
+  if(empty) empty.style.display="none";
+
+  // Get sold qty for weight products
+  const soldMap={};
+  sales.forEach(s=>{
+    (s.items||[{productId:s.productId,quantity:s.quantity,isWeightSale:s.isWeightSale}]).forEach(item=>{
+      if(item.isWeightSale||item.productId){
+        const pid=item.productId;
+        if(!soldMap[pid]) soldMap[pid]=0;
+        soldMap[pid]+=safeNum(item.quantity);
+      }
+    });
+  });
+
+  grid.innerHTML=weightProds.map(p=>{
+    const totalSold=soldMap[p.id]||0;
+    const currentStock=safeNum(p.stock);
+    const estimatedInitial=currentStock+totalSold;
+    const prog=estimatedInitial>0?Math.min(100,(totalSold/estimatedInitial*100)).toFixed(0):0;
+    const isLow=currentStock<=safeNum(p.lowStockLimit||5);
+    const stockClass=isLow?"weight-stock-low":"weight-stock-ok";
+
+    return `<div class="weight-prod-card ${isLow?"weight-card-low":""}">
+      <div class="wpc-header">
+        <div class="wpc-name-wrap">
+          <div class="wpc-icon"><i class="fa-solid fa-weight-hanging"></i></div>
+          <div>
+            <div class="wpc-name">${safeText(p.name)}</div>
+            ${p.subCat?`<div class="wpc-sub">${safeText(p.subCat)}</div>`:""}
+          </div>
+        </div>
+        <div class="wpc-actions">
+          <button class="btn btn-sm btn-outline" onclick="editProduct('${p.id}')" title="সম্পাদনা"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')" title="মুছুন"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+
+      <div class="wpc-stats-row">
+        <div class="wpc-stat">
+          <span class="wpc-stat-label">প্রাথমিক স্টক</span>
+          <strong class="wpc-stat-val">${estimatedInitial} ${p.unit||"কেজি"}</strong>
+        </div>
+        <div class="wpc-stat">
+          <span class="wpc-stat-label">মোট বিক্রিত</span>
+          <strong class="wpc-stat-val sold">${totalSold} ${p.unit||"কেজি"}</strong>
+        </div>
+        <div class="wpc-stat">
+          <span class="wpc-stat-label">অবশিষ্ট স্টক</span>
+          <strong class="wpc-stat-val ${stockClass}">${currentStock} ${p.unit||"কেজি"}</strong>
+        </div>
+        <div class="wpc-stat">
+          <span class="wpc-stat-label">বিক্রয়মূল্য/একক</span>
+          <strong class="wpc-stat-val">${money(p.sellingPrice)}</strong>
+        </div>
+      </div>
+
+      <div class="wpc-progress-wrap">
+        <div class="wpc-prog-labels">
+          <span>বিক্রিত ${prog}%</span>
+          <span>অবশিষ্ট ${100-Number(prog)}%</span>
+        </div>
+        <div class="wpc-progress-track">
+          <div class="wpc-progress-fill" style="width:${prog}%"></div>
+          <div class="wpc-progress-remain" style="width:${100-Number(prog)}%"></div>
+        </div>
+      </div>
+
+      ${isLow?`<div class="wpc-low-alert"><i class="fa-solid fa-triangle-exclamation"></i> স্টক কম — মাত্র ${currentStock} ${p.unit||"কেজি"} বাকি</div>`:""}
+
+      <div class="wpc-footer">
+        <span class="wpc-price-tag">ক্রয়: ${money(p.purchasePrice)}/${p.unit||"কেজি"}</span>
+        <button class="btn btn-sm btn-success wpc-sell-btn" onclick="quickSellWeightProduct('${p.id}')">
+          <i class="fa-solid fa-cart-plus"></i> বিক্রি করুন
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function quickSellWeightProduct(productId){
+  // Switch to sales section and select this product in weight mode
+  switchSection("sales");
+  setTimeout(()=>{
+    selectProduct(productId);
+    // Auto enable weight mode
+    if(!weightModeActive) toggleWeightMode();
+    $("saleWeightQty")?.focus();
+    showToast("ওজনভিত্তিক বিক্রয় মোড চালু — পরিমাণ লিখুন");
+  }, 200);
+}
+window.quickSellWeightProduct=quickSellWeightProduct;
 function setSaleType(type){
   currentSaleType=type;
   $("retailTypeBtn").classList.toggle("active-type",type==="খুচরা");
@@ -600,21 +767,31 @@ function renderProductCards(){
 
   list.innerHTML=filtered.map(p=>{
     const sold=soldMap[p.id]||0;
-    const isLow=safeNum(p.stock)<=safeNum(p.lowStockLimit||5);
+    const stock=safeNum(p.stock);
+    const isLow=stock<=safeNum(p.lowStockLimit||5);
+    const isZero=stock<=0;
     const isSelected=$("saleProduct")?.value===p.id;
-    const hotTag=sold>5?`<span class="hot-tag">🔥 জনপ্রিয়</span>`:"";
+    const hotTag=sold>5?`<div class="pcv2-hot">🔥 জনপ্রিয়</div>`:"";
     const price=currentSaleType==="পাইকারি"&&p.wholesalePrice?p.wholesalePrice:p.sellingPrice;
     const isSeed=p.mainCat==="বীজ";
+    const isWeight=p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct;
+    const stockClass=isZero?"pcv2-stock-zero":isLow?"pcv2-stock-low":"pcv2-stock-ok";
+    const catIcon=isWeight?"⚖️":isSeed?"🌱":"🧪";
+    const catLabel=isWeight?"ওজনভিত্তিক":p.subCat||p.mainCat||"";
     return `<button type="button"
-      class="product-card-btn ${isLow?"stock-low":""} ${isSelected?"selected":""}"
-      onclick="selectProduct('${p.id}')">
+      class="pcv2 ${isZero?"pcv2-zero":isLow?"pcv2-low":""} ${isSelected?"pcv2-selected":""} ${isWeight?"pcv2-weight":""}"
+      onclick="selectProduct('${p.id}')"
+      ${isZero?'disabled':''}>
       ${hotTag}
-      <b>${safeText(p.name)}</b>
-      <small>${isSeed?"🌱":"🧪"} ${safeText(p.subCat||p.mainCat||"")}${p.packSize?" · "+safeText(p.packSize):""}</small>
-      <small>${money(price)}</small>
-      <span class="stock-badge">স্টক: ${p.stock} ${p.unit||""}</span>
+      <div class="pcv2-cat">${catIcon} <span>${safeText(catLabel)}</span>${isWeight?`<span class="pcv2-weight-tag"><i class="fa-solid fa-weight-hanging"></i> ওজন</span>`:""}</div>
+      <div class="pcv2-name">${safeText(p.name)}</div>
+      ${p.brand?`<div class="pcv2-brand">${safeText(p.brand)}</div>`:""}
+      <div class="pcv2-bottom">
+        <div class="pcv2-price">${money(price)}/${p.unit||"পিস"}</div>
+        <div class="pcv2-stock ${stockClass}">${isZero?"শেষ":`${stock} ${p.unit||""}`}</div>
+      </div>
     </button>`;
-  }).join("")||`<div style="padding:20px;text-align:center;color:var(--text-3);font-size:.83rem">কোনো পণ্য পাওয়া যায়নি</div>`;
+  }).join("")||`<div class="prod-empty-v2"><i class="fa-solid fa-magnifying-glass"></i><p>কোনো পণ্য পাওয়া যায়নি</p></div>`;
 }
 
 function selectProduct(id){
@@ -624,11 +801,158 @@ function selectProduct(id){
   $("salePrice").value=price;
   $("saleQty").value="1";
   $("saleDiscount").value=0;
+  // Weight mode price sync
+  if($("saleWeightPrice")) $("saleWeightPrice").value=price;
+  if($("saleWeightQty")) $("saleWeightQty").value="";
+  if($("weightRemainingPreview")) $("weightRemainingPreview").style.display="none";
+
+  // Auto-enable weight mode for weight products
+  const isWeightProduct=p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct;
+  const weightUnits=["কেজি","গ্রাম","লিটার","মিলিলিটার"];
+  const isWeightUnit=weightUnits.some(u=>(p.unit||"").toLowerCase().includes(u.toLowerCase()));
+  if((isWeightProduct||isWeightUnit) && !weightModeActive){
+    toggleWeightMode();
+  } else if(!isWeightProduct && !isWeightUnit && weightModeActive){
+    // keep weight mode if user chose it, don't force disable
+  }
+
+  // Update unit labels
+  const unit=p.unit||"পিস";
+  if($("qtyUnitLabel")) $("qtyUnitLabel").textContent=unit;
+  if($("weightUnitLabel")) $("weightUnitLabel").textContent=unit;
+
+  // Update weight stock info
+  const wmStockInfo=$("weightStockInfo");
+  if(wmStockInfo) wmStockInfo.textContent=`${p.stock} ${unit}`;
+
+  const stockClass=safeNum(p.stock)<=safeNum(p.lowStockLimit||5)?"spc-low":"spc-ok";
+  const isWeightProd=p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct;
   const chip=$("selectedProductChip");
-  if(chip) chip.innerHTML=`<b>${safeText(p.name)}</b>&nbsp;—&nbsp;স্টক: ${p.stock} ${p.unit||""}${p.variety?" | "+safeText(p.variety):""}`;
+  if(chip) chip.innerHTML=`
+    <div class="spc-info">
+      <div class="spc-name">${safeText(p.name)}${p.variety?`<span class="variety-badge">${safeText(p.variety)}</span>`:""}${isWeightProd?`<span class="weight-sel-badge"><i class="fa-solid fa-weight-hanging"></i> ওজনভিত্তিক</span>`:""}</div>
+      <div class="spc-meta">
+        <span class="spc-price">মূল্য: ${money(price)}/${unit}</span>
+        <span class="spc-stock ${stockClass}"><i class="fa-solid fa-boxes-stacked"></i> স্টক: ${p.stock} ${unit}</span>
+        ${p.purchasePrice?`<span class="spc-purchase">ক্রয়: ${money(p.purchasePrice)}</span>`:""}
+      </div>
+    </div>`;
+  // Show qty panel
+  const qp=$("qtyPanel"); if(qp) qp.classList.add("active");
   renderProductCards();
   updateCartTotal();
-  $("saleQty").focus();
+  updateSaleLiveCalc();
+  // Focus appropriate field
+  if(weightModeActive) $("saleWeightQty")?.focus();
+  else $("saleQty")?.focus();
+}
+
+/* ======= Weight Mode State ======= */
+let weightModeActive = false;
+
+function toggleWeightMode(){
+  weightModeActive = !weightModeActive;
+  const nm=$("normalQtyMode"), wm=$("weightQtyMode"), btn=$("weightModeBtn");
+  if(nm) nm.style.display = weightModeActive ? "none" : "";
+  if(wm) wm.style.display = weightModeActive ? "" : "none";
+  if(btn){
+    btn.classList.toggle("active", weightModeActive);
+    btn.title = weightModeActive ? "সাধারণ মোডে ফিরুন" : "আংশিক/ওজনভিত্তিক মোড চালু করুন";
+  }
+  // Sync price if product selected
+  const pid=$("saleProduct")?.value;
+  if(pid && weightModeActive){
+    const p=products.find(x=>x.id===pid);
+    if(p){
+      const price=currentSaleType==="পাইকারি"&&p.wholesalePrice?p.wholesalePrice:p.sellingPrice;
+      if($("saleWeightPrice")) $("saleWeightPrice").value=price;
+      updateWeightCalc();
+    }
+  }
+}
+
+function updateWeightCalc(){
+  const pid=$("saleProduct")?.value;
+  const p=pid?products.find(x=>x.id===pid):null;
+  const qty=safeNum($("saleWeightQty")?.value);
+  const price=safeNum($("saleWeightPrice")?.value);
+  const preview=$("weightRemainingPreview");
+  if(!p||qty<=0||price<=0){
+    if(preview) preview.style.display="none";
+    // Hide sold/remain from header
+    const wmSold=$("wm-sold-preview"), wmRemain=$("wm-remain-preview"), wmDiv2=$("wm-divider-2");
+    if(wmSold) wmSold.style.display="none";
+    if(wmRemain) wmRemain.style.display="none";
+    if(wmDiv2) wmDiv2.style.display="none";
+    return;
+  }
+  const stock=safeNum(p.stock);
+  const remaining=Math.max(0, Math.round((stock-qty)*1000)/1000);
+  const total=Math.round(price*qty*100)/100;
+
+  // Update header stock info
+  const wmStockInfo=$("weightStockInfo");
+  if(wmStockInfo) wmStockInfo.textContent=`${stock} ${p.unit||""}`;
+
+  // Show sold/remain in header
+  const wmSold=$("wm-sold-preview"), wmRemain=$("wm-remain-preview"), wmDiv2=$("wm-divider-2");
+  if(wmSold) wmSold.style.display="";
+  if(wmRemain) wmRemain.style.display="";
+  if(wmDiv2) wmDiv2.style.display="";
+
+  if($("wrpSold")) $("wrpSold").textContent=`${qty} ${p.unit||""}`;
+  if($("wrpRemaining")) $("wrpRemaining").textContent=`${remaining} ${p.unit||""}`;
+  if($("wrpTotal")) $("wrpTotal").textContent=money(total);
+  if(preview) preview.style.display="";
+}
+
+function stepWeightQty(delta){
+  const el=$("saleWeightQty"); if(!el) return;
+  const current=safeNum(el.value)||0;
+  el.value=Math.max(0.001, Math.round((current+delta)*1000)/1000);
+  updateWeightCalc();
+}
+window.stepWeightQty=stepWeightQty;
+
+function setWeightPreset(val){
+  const el=$("saleWeightQty"); if(!el) return;
+  el.value=val;
+  updateWeightCalc();
+}
+window.setWeightPreset=setWeightPreset;
+
+function stepQty(delta){
+  const el=$("saleQty"); if(!el) return;
+  const pid=$("saleProduct")?.value;
+  const p=pid?products.find(x=>x.id===pid):null;
+  // Weight-friendly units allow decimal steps
+  const weightUnits=["কেজি","গ্রাম","লিটার","মিলিলিটার","কেজি (kg)","লিটার (L)","গ্রাম (g)"];
+  const isWeight=p&&weightUnits.some(u=>(p.unit||"").toLowerCase().includes(u.toLowerCase().split(" ")[0]));
+  const step=isWeight?0.5:1;
+  const current=safeNum(el.value)||0;
+  el.value=Math.max(step, Math.round((current+delta*step)*1000)/1000);
+  updateSaleLiveCalc();
+}
+
+function clearProductSearch(){
+  const el=$("productDropdownSearch"); if(el) el.value="";
+  const cb=$("clearProdSearch"); if(cb) cb.style.display="none";
+  renderProductCards();
+}
+
+function updateSaleLiveCalc(){
+  const pid=$("saleProduct")?.value;
+  const p=pid?products.find(x=>x.id===pid):null;
+  const qty=safeNum($("saleQty")?.value);
+  const price=safeNum($("salePrice")?.value);
+  const discount=safeNum($("saleDiscount")?.value||0);
+  const box=$("liveCalcBox");
+  if(!p||qty<=0||price<=0){ if(box) box.style.display="none"; return; }
+  const total=Math.max(0,(price*qty)-discount);
+  const profit=Math.max(0,((price-safeNum(p.purchasePrice))*qty)-discount);
+  if($("lcTotal")) $("lcTotal").textContent=money(total);
+  if($("lcProfit")) $("lcProfit").textContent=money(profit);
+  if(box) box.style.display="";
 }
 
 function addToCart(){
@@ -636,31 +960,56 @@ function addToCart(){
   if(!pid) return showToast("পণ্য নির্বাচন করুন");
   const product=products.find(p=>p.id===pid);
   if(!product) return showToast("পণ্য পাওয়া যায়নি");
-  const qty=safeNum($("saleQty")?.value);
-  if(qty<=0||!Number.isInteger(qty)) return showToast("সঠিক পরিমাণ দিন");
-  const price=safeNum($("salePrice")?.value);
-  if(price<=0) return showToast("সঠিক মূল্য দিন");
-  const discount=safeNum($("saleDiscount")?.value||0);
-  if(discount<0) return showToast("ছাড় মাইনাস হতে পারবে না");
-  if(discount>price*qty) return showToast("ছাড় বেশি হয়ে গেছে");
+
+  let qty, price, discount=0;
+
+  if(weightModeActive){
+    // Weight/partial mode — allows decimals
+    qty=safeNum($("saleWeightQty")?.value);
+    price=safeNum($("saleWeightPrice")?.value);
+    if(qty<=0) return showToast("সঠিক পরিমাণ/ওজন দিন");
+    if(price<=0) return showToast("সঠিক মূল্য দিন");
+  } else {
+    qty=safeNum($("saleQty")?.value);
+    price=safeNum($("salePrice")?.value);
+    discount=safeNum($("saleDiscount")?.value||0);
+    if(qty<=0) return showToast("সঠিক পরিমাণ দিন");
+    if(price<=0) return showToast("সঠিক মূল্য দিন");
+    if(discount<0) return showToast("ছাড় মাইনাস হতে পারবে না");
+    if(discount>price*qty) return showToast("ছাড় বেশি হয়ে গেছে");
+  }
+
   const cartQty=getCartQtyForProduct(pid);
   if(safeNum(product.stock)<qty+cartQty)
-    return showToast(`স্টক পর্যাপ্ত নেই (বাকি: ${safeNum(product.stock)-cartQty})`);
+    return showToast(`স্টক পর্যাপ্ত নেই (বাকি: ${Math.round((safeNum(product.stock)-cartQty)*1000)/1000} ${product.unit||""})`);
+
   const total=Math.max(0,(price*qty)-discount);
   const purchaseP=safeNum(product.purchasePrice);
   const profit=Math.max(0,((price-purchaseP)*qty)-discount);
+  const isWeightSale=weightModeActive;
+
   saleCart.push({
     productId:product.id, productName:product.name,
     mainCat:product.mainCat||"",
+    unit:product.unit||"",
     quantity:qty, price, discount, total, profit,
-    purchasePrice:purchaseP
+    purchasePrice:purchaseP,
+    isWeightSale
   });
+
+  // Reset fields
   $("saleProduct").value="";
-  $("saleQty").value=""; $("salePrice").value=""; $("saleDiscount").value=0;
+  if($("saleQty")) $("saleQty").value="";
+  if($("salePrice")) $("salePrice").value="";
+  if($("saleDiscount")) $("saleDiscount").value=0;
+  if($("saleWeightQty")) $("saleWeightQty").value="";
+  if($("saleWeightPrice")) $("saleWeightPrice").value="";
+  if($("weightRemainingPreview")) $("weightRemainingPreview").style.display="none";
+  if($("liveCalcBox")) $("liveCalcBox").style.display="none";
   const chip=$("selectedProductChip");
-  if(chip) chip.innerHTML=`<span>কোনো পণ্য নির্বাচন হয়নি</span>`;
+  if(chip) chip.innerHTML=`<div class="spc-empty"><i class="fa-regular fa-hand-pointer"></i> উপর থেকে পণ্য বেছে নিন</div>`;
   renderProductCards(); renderCart();
-  showToast(`${product.name} কার্টে যোগ হয়েছে`);
+  showToast(`${product.name} কার্টে যোগ হয়েছে ✓`);
   return true;
 }
 
@@ -668,38 +1017,49 @@ function removeFromCart(idx){ saleCart.splice(idx,1); renderCart(); renderProduc
 
 function renderCart(){
   const list=$("saleCartList"), badge=$("saleCartCount");
-  if(badge) badge.textContent=`${saleCart.length} টি পণ্য`;
+  if(badge) badge.textContent=`${saleCart.length} পণ্য`;
   if(!list) return;
   if(!saleCart.length){
-    list.innerHTML=`<div class="cart-empty"><i class="fa-regular fa-cart-shopping"></i><p>এখনো কোনো পণ্য যোগ হয়নি</p></div>`;
+    list.innerHTML=`<div class="cart-empty-v2"><i class="fa-regular fa-cart-shopping"></i><p>কোনো পণ্য যোগ হয়নি</p></div>`;
     updateCartTotal(); return;
   }
-  list.innerHTML=saleCart.map((item,i)=>`
-    <div class="cart-item">
-      <div class="cart-item-info">
-        <b>${safeText(item.productName)}</b>
-        <small>${item.quantity} × ${money(item.price)}${safeNum(item.discount)?` • ছাড়: ${money(item.discount)}`:""}</small>
+  list.innerHTML=saleCart.map((item,i)=>{
+    const qtyDisplay=Number.isInteger(item.quantity)?item.quantity:(Math.round(item.quantity*1000)/1000);
+    const weightTag=item.isWeightSale?`<span class="weight-cart-tag"><i class="fa-solid fa-scale-balanced"></i> আংশিক</span>`:"";
+    return `
+    <div class="cart-item-v2">
+      <div class="civ2-info">
+        <div class="civ2-name">${safeText(item.productName)} ${weightTag}</div>
+        <div class="civ2-meta">${qtyDisplay} ${item.unit||""} × ${money(item.price)}${safeNum(item.discount)?` · ছাড়: ${money(item.discount)}`:""}</div>
+        <div class="civ2-profit">লাভ: ${money(item.profit)}</div>
       </div>
-      <strong>${money(item.total)}</strong>
-      <button type="button" class="cart-item-remove" onclick="removeFromCart(${i})"><i class="fa-solid fa-xmark"></i></button>
-    </div>`).join("");
+      <div class="civ2-right">
+        <strong class="civ2-total">${money(item.total)}</strong>
+        <button type="button" class="civ2-remove" onclick="removeFromCart(${i})"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>`;
+  }).join("");
   updateCartTotal();
 }
 
 function updateCartTotal(){
   const total=saleCart.reduce((s,x)=>s+safeNum(x.total),0);
+  const profit=saleCart.reduce((s,x)=>s+safeNum(x.profit),0);
   if($("saleTotalPreview")) $("saleTotalPreview").textContent=money(total);
-  if($("saleStockHint")) $("saleStockHint").textContent=saleCart.length
-    ?`${saleCart.length}টি পণ্য — মোট ${money(total)}`
-    :"পণ্য নির্বাচন করলে বিবরণ দেখা যাবে";
+  const profLine=$("cartProfitLine");
+  if(profLine){
+    profLine.style.display=saleCart.length?"":"none";
+    if($("cartTotalProfit")) $("cartTotalProfit").textContent=money(profit);
+  }
   if($("saleMethod")?.value==="আংশিক") calcPartialDue();
 }
 
 /* Payment Methods */
 function initPaymentMethods(){
-  document.querySelectorAll(".pmb").forEach(btn=>{
+  // Handle both old .pmb and new .pmb-v2
+  document.querySelectorAll(".pmb, .pmb-v2").forEach(btn=>{
     btn.addEventListener("click",()=>{
-      document.querySelectorAll(".pmb").forEach(b=>b.classList.remove("active-method"));
+      document.querySelectorAll(".pmb, .pmb-v2").forEach(b=>b.classList.remove("active-method"));
       btn.classList.add("active-method");
       const val=btn.dataset.method;
       if($("saleMethod")) $("saleMethod").value=val;
@@ -708,6 +1068,18 @@ function initPaymentMethods(){
       if(val==="আংশিক") calcPartialDue();
     });
   });
+}
+
+function updateSalesStatsBar(){
+  const today=todayISO();
+  const todaySalesList=sales.filter(s=>s.date===today);
+  const todayTotal=todaySalesList.reduce((s,x)=>s+safeNum(x.total),0);
+  const todayProfit=todaySalesList.reduce((s,x)=>s+safeNum(x.profit),0);
+  const weightCount=todaySalesList.filter(s=>s.items&&s.items.some(i=>i.isWeightSale)).length;
+  if($("saleBarToday")) $("saleBarToday").textContent=money(todayTotal);
+  if($("saleBarProfit")) $("saleBarProfit").textContent=money(todayProfit);
+  if($("saleBarCount")) $("saleBarCount").textContent=todaySalesList.length;
+  if($("saleBarWeight")) $("saleBarWeight").textContent=weightCount;
 }
 
 function calcPartialDue(){
@@ -832,9 +1204,14 @@ async function handleSaleSubmit(e){
   $("saleForm").reset();
   $("saleProduct").value="";
   const chip=$("selectedProductChip");
-  if(chip) chip.innerHTML=`<span>কোনো পণ্য নির্বাচন হয়নি</span>`;
-  document.querySelectorAll(".pmb").forEach(b=>b.classList.remove("active-method"));
-  const cashBtn=document.querySelector('.pmb[data-method="সম্পূর্ণ নগদ"]');
+  if(chip) chip.innerHTML=`<div class="spc-empty"><i class="fa-regular fa-hand-pointer"></i> উপর থেকে পণ্য বেছে নিন</div>`;
+  // Reset weight mode
+  if(weightModeActive){ weightModeActive=false; const nm=$("normalQtyMode"),wm=$("weightQtyMode"),btn=$("weightModeBtn"); if(nm)nm.style.display=""; if(wm)wm.style.display="none"; if(btn)btn.classList.remove("active"); }
+  if($("weightRemainingPreview")) $("weightRemainingPreview").style.display="none";
+  if($("liveCalcBox")) $("liveCalcBox").style.display="none";
+  const qp=$("qtyPanel"); if(qp) qp.classList.remove("active");
+  document.querySelectorAll(".pmb,.pmb-v2").forEach(b=>b.classList.remove("active-method"));
+  const cashBtn=document.querySelector('.pmb-v2[data-method="সম্পূর্ণ নগদ"]')||document.querySelector('.pmb[data-method="সম্পূর্ণ নগদ"]');
   if(cashBtn) cashBtn.classList.add("active-method");
   if($("saleMethod")) $("saleMethod").value="সম্পূর্ণ নগদ";
   $("partialPayFields").style.display="none";
@@ -857,7 +1234,15 @@ function renderSales(){
   }
 
   const tbody=$("salesTable"); if(!tbody) return;
-  tbody.innerHTML=list.map(s=>{
+
+  /* Pagination: সব ইতিহাসে ৫০টি করে দেখাও */
+  const showPagination = showAllHistory && list.length > salesPageSize;
+  if(!showAllHistory) { salesPageOffset=0; }
+  const displayList = showPagination
+    ? list.slice(salesPageOffset, salesPageOffset + salesPageSize)
+    : list;
+
+  tbody.innerHTML=displayList.map(s=>{
     const pmClass = s.paymentMethod==="সম্পূর্ণ নগদ"?"cash"
       :s.paymentMethod==="মোবাইল ব্যাংকিং"?"mobile"
       :s.paymentMethod==="সম্পূর্ণ বাকি"?"due"
@@ -894,6 +1279,30 @@ function renderSales(){
     </tr>`;
   }).join("")
     ||`<tr><td colspan="9" class="tbl-empty"><i class="fa-solid fa-receipt"></i><br>কোনো বিক্রয় পাওয়া যায়নি</td></tr>`;
+
+  /* Pagination controls */
+  const paginationWrap = $("salesPaginationWrap");
+  if(paginationWrap){
+    if(showPagination){
+      const totalPages = Math.ceil(list.length / salesPageSize);
+      const currentPage = Math.floor(salesPageOffset / salesPageSize) + 1;
+      paginationWrap.style.display = "";
+      paginationWrap.innerHTML = `
+        <div class="pagination-bar">
+          <span class="pg-info">পৃষ্ঠা ${currentPage} / ${totalPages} — মোট ${list.length}টি</span>
+          <div class="pg-btns">
+            <button class="btn btn-sm btn-outline" onclick="salesPrevPage()" ${salesPageOffset===0?'disabled':''}>
+              <i class="fa-solid fa-chevron-left"></i> আগের
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="salesNextPage()" ${salesPageOffset+salesPageSize>=list.length?'disabled':''}>
+              পরের <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>`;
+    } else {
+      paginationWrap.style.display = "none";
+    }
+  }
 }
 
 async function deleteSale(id){
@@ -1240,6 +1649,21 @@ function renderDashboard(){
 
   renderDueReminders();
   buildNotifications();
+  updatePartialSoldDashboard();
+  updateWeightDashboard();
+}
+
+function updateWeightDashboard(){
+  const weightProds=products.filter(p=>p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct);
+  const totalWeightStock=weightProds.reduce((s,p)=>s+safeNum(p.stock),0);
+  const weightSales=sales.filter(s=>
+    (s.items||[{isWeightSale:s.isWeightSale}]).some(i=>i.isWeightSale)
+  );
+
+  if($("weightProductCount")) $("weightProductCount").textContent=weightProds.length;
+  if($("weightTotalStock")) $("weightTotalStock").textContent=totalWeightStock+" ইউনিট";
+  if($("weightSaleCount")) $("weightSaleCount").textContent=weightSales.length;
+  if($("weightProductCountLabel")) $("weightProductCountLabel").textContent=`${weightProds.length}টি পণ্য স্টকে`;
 }
 
 function renderDueReminders(){
@@ -2019,6 +2443,89 @@ function showCardDetail(cardType){
       body.innerHTML=buildSaleDetailTable(list, true);
       break;
     }
+    case "partialSales": {
+      title.innerHTML=`<i class="fa-solid fa-arrows-split-up-and-left"></i> আংশিক বিক্রিত পণ্যের বিস্তারিত`;
+      const data=getPartialSoldData();
+      const totalRevenue=data.reduce((s,d)=>s+d.totalRevenue,0);
+      const totalTx=data.reduce((s,d)=>s+d.history.length,0);
+      summary.innerHTML=`<div class="dm-sum-grid">
+        <div class="dm-sum-item purple"><span>আংশিক বিক্রিত পণ্য</span><strong>${data.length}টি</strong></div>
+        <div class="dm-sum-item green"><span>মোট রাজস্ব</span><strong>${money(totalRevenue)}</strong></div>
+        <div class="dm-sum-item sky"><span>মোট লেনদেন</span><strong>${totalTx}টি</strong></div>
+      </div>`;
+      if(!data.length){
+        body.innerHTML=`<div class="dm-empty"><i class="fa-solid fa-scale-balanced"></i><p>কোনো আংশিক (ওজনভিত্তিক) বিক্রয় পাওয়া যায়নি</p></div>`;
+      } else {
+        body.innerHTML=`<div class="partial-detail-list">${data.map(d=>{
+          const prog=d.estimatedInitial>0?Math.min(100,(d.totalSold/d.estimatedInitial*100)).toFixed(0):0;
+          return `<div class="partial-detail-card">
+            <div class="pdc-header">
+              <div class="pdc-name"><i class="fa-solid fa-scale-balanced"></i> ${safeText(d.name)} <span class="unit-tag">${d.unit}</span></div>
+              <div class="pdc-stats">
+                <span class="pdc-stat sky">স্টক: ${d.currentStock||0} ${d.unit}</span>
+                <span class="pdc-stat green">বিক্রিত: ${d.totalSold} ${d.unit}</span>
+                <span class="pdc-stat amber">রাজস্ব: ${money(d.totalRevenue)}</span>
+              </div>
+            </div>
+            <div class="pdc-progress">
+              <div style="height:8px;background:var(--surface-3);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${prog}%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width .5s"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--text-4);margin-top:4px">
+                <span>বিক্রিত ${prog}%</span><span>অবশিষ্ট ${100-Number(prog)}%</span>
+              </div>
+            </div>
+            <div class="dm-table-wrap" style="margin-top:10px"><table class="dm-table">
+              <thead><tr><th>তারিখ</th><th>পরিমাণ</th><th>একক মূল্য</th><th>মোট</th><th>ক্রেতা</th></tr></thead>
+              <tbody>${d.history.map(h=>`<tr>
+                <td>${h.date}<br><small>${formatTime({createdAt:h.createdAt})}</small></td>
+                <td style="font-weight:700">${h.qty} ${d.unit}</td>
+                <td>${h.price?money(h.price)+"/"+d.unit:"-"}</td>
+                <td style="font-weight:700;color:var(--brand)">${money(h.total)}</td>
+                <td>${safeText(h.customer)}</td>
+              </tr>`).join("")}</tbody>
+            </table></div>
+          </div>`;
+        }).join("")}</div>`;
+      }
+      break;
+    }
+    case "weightSales": {
+      title.innerHTML=`<i class="fa-solid fa-weight-hanging"></i> ওজনভিত্তিক পণ্যের বিস্তারিত`;
+      const weightProds=products.filter(p=>p.mainCat==="ওজনভিত্তিক"||p.isWeightProduct);
+      const soldMap2={};
+      sales.forEach(s=>(s.items||[{productId:s.productId,quantity:s.quantity,isWeightSale:s.isWeightSale}]).forEach(item=>{
+        if(soldMap2[item.productId]) soldMap2[item.productId]+=safeNum(item.quantity);
+        else soldMap2[item.productId]=safeNum(item.quantity);
+      }));
+      const totalWeightStock=weightProds.reduce((s,p)=>s+safeNum(p.stock),0);
+      summary.innerHTML=`<div class="dm-sum-grid">
+        <div class="dm-sum-item purple"><span>মোট ওজনভিত্তিক পণ্য</span><strong>${weightProds.length}টি</strong></div>
+        <div class="dm-sum-item green"><span>মোট অবশিষ্ট স্টক</span><strong>${totalWeightStock} ইউনিট</strong></div>
+      </div>`;
+      if(!weightProds.length){
+        body.innerHTML=`<div class="dm-empty"><i class="fa-solid fa-weight-hanging"></i><p>কোনো ওজনভিত্তিক পণ্য পাওয়া যায়নি</p><small>পণ্য যোগ করার সময় "⚖️ ওজনভিত্তিক" ক্যাটাগরি বেছে নিন</small></div>`;
+      } else {
+        body.innerHTML=`<div class="dm-table-wrap"><table class="dm-table">
+          <thead><tr><th>পণ্যের নাম</th><th>উপ-ক্যাটাগরি</th><th>একক</th><th>প্রাথমিক স্টক</th><th>মোট বিক্রিত</th><th>অবশিষ্ট</th><th>বিক্রয়মূল্য/একক</th></tr></thead>
+          <tbody>${weightProds.map(p=>{
+            const sold=soldMap2[p.id]||0;
+            const est=safeNum(p.stock)+sold;
+            const isLow=safeNum(p.stock)<=safeNum(p.lowStockLimit||5);
+            return `<tr>
+              <td><b>${safeText(p.name)}</b></td>
+              <td>${safeText(p.subCat||"-")}</td>
+              <td>${safeText(p.unit||"কেজি")}</td>
+              <td>${est} ${p.unit||""}</td>
+              <td style="color:var(--accent-2);font-weight:700">${sold} ${p.unit||""}</td>
+              <td><span class="badge ${isLow?"red":"green"}">${p.stock} ${p.unit||""}</span></td>
+              <td style="font-weight:700">${money(p.sellingPrice)}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table></div>`;
+      }
+      break;
+    }
     default: return;
   }
 
@@ -2097,6 +2604,10 @@ document.addEventListener("click",e=>{
   if(e.target.id==="detailModal") closeDetailModal();
 });
 
+/* ===================== Pagination State ===================== */
+let salesPageSize = 50;
+let salesPageOffset = 0;
+
 /* ===================== Render All ===================== */
 function renderAll(){
   renderProducts();
@@ -2106,6 +2617,208 @@ function renderAll(){
   renderReportCards();
   buildNotifications();
   renderWithdrawBalance();
+  updateSalesStatsBar();
+  renderBackupStats();
+}
+
+function renderBackupStats(){
+  const el=$("backupStats"); if(!el) return;
+  el.innerHTML=`
+    <div class="bstat-grid">
+      <div class="bstat-item"><i class="fa-solid fa-seedling"></i><span>পণ্য</span><strong>${products.length}টি</strong></div>
+      <div class="bstat-item"><i class="fa-solid fa-receipt"></i><span>বিক্রয়</span><strong>${sales.length}টি</strong></div>
+      <div class="bstat-item"><i class="fa-solid fa-hand-holding-dollar"></i><span>বাকি</span><strong>${dues.length}টি</strong></div>
+      <div class="bstat-item"><i class="fa-solid fa-arrow-up-from-bracket"></i><span>উত্তোলন</span><strong>${withdrawals.length}টি</strong></div>
+    </div>`;
+}
+
+/* Section-specific renders (দ্রুততার জন্য) */
+function renderSalesOnly(){
+  renderSales();
+  renderDashboard();
+  updateSalesStatsBar();
+  buildNotifications();
+}
+function renderDuesOnly(){
+  renderDues();
+  renderDashboard();
+  buildNotifications();
+}
+function renderProductsOnly(){
+  renderProducts();
+  renderDashboard();
+  buildNotifications();
+}
+
+/* ===================== Unit Change Helper ===================== */
+function onUnitChange(){
+  const unit=($("pUnit")?.value||"").toLowerCase();
+  const weightUnits=["কেজি","kg","গ্রাম","gram","g","লিটার","litre","liter","l","মিলিলিটার","ml"];
+  const isWeight=weightUnits.some(u=>unit.includes(u));
+  const hint=$("weightStockHint"), hintText=$("weightStockHintText");
+  if(hint) hint.style.display=isWeight?"":"none";
+  if(hintText&&isWeight){
+    const u=($("pUnit")?.value)||"ইউনিট";
+    hintText.textContent=`স্টক ${u}তে দিন — বিক্রয়ের সময় যেকোনো পরিমাণে কেটে যাবে`;
+  }
+}
+window.onUnitChange=onUnitChange;
+
+/* ===================== Partial Sold Report ===================== */
+function getPartialSoldData(){
+  /* Build per-product sold history from weight sales */
+  const map={};
+  sales.forEach(s=>{
+    const items=s.items||[{productId:s.productId,productName:s.productName,quantity:s.quantity,total:s.total,isWeightSale:s.isWeightSale||false}];
+    items.forEach(item=>{
+      if(!item.isWeightSale) return;
+      const pid=item.productId;
+      const prod=products.find(p=>p.id===pid)||{name:item.productName,unit:"",stock:0};
+      if(!map[pid]){
+        map[pid]={
+          productId:pid,
+          name:prod.name||item.productName,
+          unit:prod.unit||"",
+          initialStock: safeNum(prod.stock), // current stock
+          totalSold:0,
+          totalRevenue:0,
+          history:[]
+        };
+      }
+      map[pid].totalSold+=safeNum(item.quantity);
+      map[pid].totalRevenue+=safeNum(item.total);
+      map[pid].history.push({
+        date:s.date,
+        createdAt:s.createdAt||s.date,
+        qty:safeNum(item.quantity),
+        price:safeNum(item.price||0),
+        total:safeNum(item.total),
+        customer:s.customerName||"সাধারণ ক্রেতা",
+        saleId:s.id
+      });
+    });
+  });
+
+  // Enrich with current product data
+  Object.keys(map).forEach(pid=>{
+    const prod=products.find(p=>p.id===pid);
+    if(prod){
+      map[pid].name=prod.name;
+      map[pid].unit=prod.unit||"";
+      map[pid].currentStock=safeNum(prod.stock);
+      // estimated initial = current + totalSold
+      map[pid].estimatedInitial=safeNum(prod.stock)+map[pid].totalSold;
+    }
+    map[pid].history.sort((a,b)=>(b.createdAt||b.date||"").localeCompare(a.createdAt||a.date||""));
+  });
+  return Object.values(map);
+}
+
+function openPartialSoldReport(){
+  const panel=$("partialSoldPanel"); if(!panel) return;
+  renderPartialSoldReport();
+  panel.style.display="flex";
+  document.body.style.overflow="hidden";
+}
+window.openPartialSoldReport=openPartialSoldReport;
+
+function closePartialSoldReport(){
+  const panel=$("partialSoldPanel"); if(panel){ panel.style.display="none"; document.body.style.overflow=""; }
+}
+window.closePartialSoldReport=closePartialSoldReport;
+
+function renderPartialSoldReport(){
+  const data=getPartialSoldData();
+  const summary=$("partialReportSummary"), body=$("partialReportBody");
+  if(!summary||!body) return;
+
+  const totalPartialSales=data.reduce((s,d)=>s+d.totalRevenue,0);
+  const totalPartialSold=data.length;
+  const totalTransactions=data.reduce((s,d)=>s+d.history.length,0);
+
+  summary.innerHTML=`
+    <div class="pr-summary-grid">
+      <div class="pr-sum-card purple">
+        <i class="fa-solid fa-arrows-split-up-and-left"></i>
+        <div><span>আংশিক বিক্রিত পণ্য</span><strong>${totalPartialSold}টি</strong></div>
+      </div>
+      <div class="pr-sum-card green">
+        <i class="fa-solid fa-sack-dollar"></i>
+        <div><span>মোট আংশিক রাজস্ব</span><strong>${money(totalPartialSales)}</strong></div>
+      </div>
+      <div class="pr-sum-card sky">
+        <i class="fa-solid fa-receipt"></i>
+        <div><span>মোট লেনদেন সংখ্যা</span><strong>${totalTransactions}টি</strong></div>
+      </div>
+    </div>`;
+
+  if(!data.length){
+    body.innerHTML=`<div class="pr-empty"><i class="fa-solid fa-scale-balanced"></i><p>কোনো আংশিক (ওজনভিত্তিক) বিক্রয় পাওয়া যায়নি</p><small>বিক্রয় সেকশনে ⚖️ বোতাম চেপে আংশিক/ওজনভিত্তিক বিক্রয় করুন</small></div>`;
+    return;
+  }
+
+  body.innerHTML=data.map((d,idx)=>{
+    const prog=d.estimatedInitial>0?Math.min(100,(d.totalSold/d.estimatedInitial*100)).toFixed(0):0;
+    const histRows=d.history.map(h=>`
+      <tr>
+        <td>${h.date}<br><small style="color:var(--text-4)">${formatTime({createdAt:h.createdAt})}</small></td>
+        <td style="font-weight:600">${h.qty} ${d.unit}</td>
+        <td>${h.price?money(h.price)+'/'+d.unit:'-'}</td>
+        <td style="font-weight:700;color:var(--brand)">${money(h.total)}</td>
+        <td>${safeText(h.customer)}</td>
+      </tr>`).join("");
+    return `
+    <div class="pr-product-card">
+      <div class="pr-product-header">
+        <div class="pr-product-name">
+          <i class="fa-solid fa-scale-balanced"></i>
+          ${safeText(d.name)}
+          <span class="pr-unit-badge">${d.unit||"ইউনিট"}</span>
+        </div>
+        <div class="pr-product-stats">
+          <span class="pr-stat sky"><i class="fa-solid fa-boxes-stacked"></i> বর্তমান স্টক: <b>${d.currentStock||0} ${d.unit}</b></span>
+          <span class="pr-stat green"><i class="fa-solid fa-cart-shopping"></i> মোট বিক্রিত: <b>${d.totalSold} ${d.unit}</b></span>
+          <span class="pr-stat amber"><i class="fa-solid fa-box-open"></i> প্রাথমিক স্টক (আনুমানিক): <b>${d.estimatedInitial||0} ${d.unit}</b></span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="pr-progress-wrap">
+        <div class="pr-progress-labels">
+          <span>বিক্রিত ${prog}%</span>
+          <span>অবশিষ্ট ${100-Number(prog)}%</span>
+        </div>
+        <div class="pr-progress-track">
+          <div class="pr-progress-fill" style="width:${prog}%"></div>
+        </div>
+        <div class="pr-progress-detail">
+          <div class="pr-pd-item green"><span>মোট স্টক (আনুমানিক)</span><strong>${d.estimatedInitial||0} ${d.unit}</strong></div>
+          <div class="pr-pd-item rose"><span>মোট বিক্রিত</span><strong>${d.totalSold} ${d.unit}</strong></div>
+          <div class="pr-pd-item sky"><span>অবশিষ্ট</span><strong>${d.currentStock||0} ${d.unit}</strong></div>
+          <div class="pr-pd-item amber"><span>মোট রাজস্ব</span><strong>${money(d.totalRevenue)}</strong></div>
+        </div>
+      </div>
+
+      <!-- History table -->
+      <div class="pr-hist-title"><i class="fa-solid fa-clock-rotate-left"></i> বিক্রয় ইতিহাস (${d.history.length}টি লেনদেন)</div>
+      <div class="pr-hist-wrap">
+        <table class="pr-hist-table">
+          <thead><tr><th>তারিখ ও সময়</th><th>পরিমাণ</th><th>একক মূল্য</th><th>মোট</th><th>ক্রেতা</th></tr></thead>
+          <tbody>${histRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function updatePartialSoldDashboard(){
+  const data=getPartialSoldData();
+  const totalRevenue=data.reduce((s,d)=>s+d.totalRevenue,0);
+  const totalRemainingStock=data.reduce((s,d)=>s+(d.currentStock||0),0);
+  if($("partialSoldCount")) $("partialSoldCount").textContent=data.length;
+  if($("partialSoldTotal")) $("partialSoldTotal").textContent=money(totalRevenue);
+  if($("partialRemainingStock")) $("partialRemainingStock").textContent=totalRemainingStock+" ইউনিট";
+  if($("partialSaleCountLabel")) $("partialSaleCountLabel").textContent=`${data.length}টি পণ্য বিক্রিত`;
 }
 
 /* ===================== Auto Product Input ===================== */
@@ -2236,6 +2949,796 @@ function initAutoProductInput(){
   });
 }
 
+/* ═══════════════════════════════════════════════════════════
+   সব (All) — Central View System
+   All View Panel: Sales, Product Store, Dues
+   Dashboard Card → Popup → Click → All View Deep Dive
+═══════════════════════════════════════════════════════════ */
+
+let allViewActiveTab = "sales";
+let allViewSearchTerm = "";
+let allViewDateFilter = "all";
+let allViewCatFilter  = "all";
+let allViewPayFilter  = "all";
+let allViewDueFilter  = "all";
+
+/* ---- Open/Close ---- */
+function openAllView(tab, itemId){
+  const panel = $("allViewPanel");
+  if(!panel) return;
+  panel.style.display = "flex";
+  document.body.style.overflow = "hidden";
+  switchAllTab(tab || allViewActiveTab);
+  if(itemId) setTimeout(()=>openAllViewDetail(tab, itemId), 80);
+}
+
+function closeAllView(){
+  const panel = $("allViewPanel");
+  if(panel){ panel.style.display = "none"; document.body.style.overflow = ""; }
+  hideAllViewDetail();
+}
+
+function initAllView(){
+  const closeBtn = $("closeAllView");
+  if(closeBtn) closeBtn.addEventListener("click", closeAllView);
+
+  const overlay = $("allViewPanel");
+  if(overlay) overlay.addEventListener("click", e => { if(e.target === overlay) closeAllView(); });
+
+  /* All View button in topbar */
+  const allBtn = $("allViewBtn");
+  if(allBtn) allBtn.addEventListener("click", ()=>openAllView("sales"));
+
+  /* Tab buttons */
+  document.querySelectorAll(".avt").forEach(btn=>{
+    btn.addEventListener("click",()=>switchAllTab(btn.dataset.avt));
+  });
+
+  /* Search */
+  const srch = $("allViewSearch");
+  if(srch) srch.addEventListener("input", e=>{
+    allViewSearchTerm = e.target.value.toLowerCase();
+    renderAllViewActiveTab();
+  });
+
+  /* Date filter */
+  const df = $("allViewDateFilter");
+  if(df) df.addEventListener("change", e=>{
+    allViewDateFilter = e.target.value;
+    renderAllViewActiveTab();
+  });
+
+  /* Category filter (products) */
+  const cf = $("allViewCatFilter");
+  if(cf) cf.addEventListener("change", e=>{
+    allViewCatFilter = e.target.value;
+    renderAllViewActiveTab();
+  });
+
+  /* Payment filter (sales) */
+  const pf = $("allViewPayFilter");
+  if(pf) pf.addEventListener("change", e=>{
+    allViewPayFilter = e.target.value;
+    renderAllViewActiveTab();
+  });
+
+  /* Due filter */
+  const duf = $("allViewDueFilter");
+  if(duf) duf.addEventListener("change", e=>{
+    allViewDueFilter = e.target.value;
+    renderAllViewActiveTab();
+  });
+
+  /* Print */
+  const printBtn = $("allViewPrint");
+  if(printBtn) printBtn.addEventListener("click", ()=>window.print());
+
+  /* Export */
+  const exportBtn = $("allViewExport");
+  if(exportBtn) exportBtn.addEventListener("click", exportAllViewCSV);
+
+  /* Back button in detail view */
+  const backBtn = $("avBackBtn");
+  if(backBtn) backBtn.addEventListener("click", hideAllViewDetail);
+}
+
+function switchAllTab(tab){
+  allViewActiveTab = tab;
+  document.querySelectorAll(".avt").forEach(b=>b.classList.toggle("active", b.dataset.avt===tab));
+  document.querySelectorAll(".avt-pane").forEach(p=>p.classList.remove("active"));
+  const pane = $("avp-"+tab);
+  if(pane) pane.classList.add("active");
+
+  /* Show/hide filters based on tab */
+  const catF = $("allViewCatFilter");
+  const payF = $("allViewPayFilter");
+  const dueF = $("allViewDueFilter");
+  if(catF) catF.style.display = tab==="products"?"":"none";
+  if(payF) payF.style.display = tab==="sales"?"":"none";
+  if(dueF) dueF.style.display = tab==="dues"?"":"none";
+
+  /* Reset search */
+  const srch = $("allViewSearch");
+  if(srch){ srch.value=""; allViewSearchTerm=""; }
+
+  hideAllViewDetail();
+  renderAllViewActiveTab();
+}
+
+function renderAllViewActiveTab(){
+  if(allViewActiveTab==="sales")    renderAllViewSales();
+  if(allViewActiveTab==="products") renderAllViewProducts();
+  if(allViewActiveTab==="dues")     renderAllViewDues();
+}
+
+/* ---- Date filter helper ---- */
+function allViewDateMatch(dateStr){
+  if(allViewDateFilter==="all") return true;
+  if(!dateStr) return false;
+  const today = todayISO();
+  if(allViewDateFilter==="today") return dateStr===today;
+  const d = new Date(dateStr);
+  if(allViewDateFilter==="week"){
+    const now = new Date(); const dow = now.getDay();
+    const start = new Date(now); start.setDate(now.getDate()-dow);
+    start.setHours(0,0,0,0);
+    return d >= start;
+  }
+  if(allViewDateFilter==="month"){
+    return dateStr.slice(0,7) === today.slice(0,7);
+  }
+  return true;
+}
+
+/* ══════════ SALES TAB ══════════ */
+function renderAllViewSales(){
+  const summaryEl = $("avSalesSummary");
+  const tableEl   = $("avSalesTable");
+  if(!summaryEl||!tableEl) return;
+
+  /* Filter */
+  let list = sales.filter(s=>{
+    const dateOk = allViewDateMatch(s.date);
+    const searchOk = !allViewSearchTerm ||
+      (s.productName||"").toLowerCase().includes(allViewSearchTerm) ||
+      (s.customerName||"").toLowerCase().includes(allViewSearchTerm) ||
+      (s.village||"").toLowerCase().includes(allViewSearchTerm) ||
+      (s.id||"").toLowerCase().includes(allViewSearchTerm);
+    const payOk = allViewPayFilter==="all" || s.paymentMethod===allViewPayFilter;
+    return dateOk && searchOk && payOk;
+  });
+
+  /* Summary */
+  const totalSales   = list.reduce((s,x)=>s+safeNum(x.total),0);
+  const totalProfit  = list.reduce((s,x)=>s+safeNum(x.profit),0);
+  const totalCash    = list.filter(s=>s.paymentMethod==="সম্পূর্ণ নগদ"||s.paymentMethod==="মোবাইল ব্যাংকিং")
+                           .reduce((s,x)=>s+safeNum(x.total),0)
+                     + list.filter(s=>s.paymentMethod==="নগদ+বাকি"||s.paymentMethod==="আংশিক")
+                           .reduce((s,x)=>s+safeNum(x.paidAmount||0),0);
+  const totalDue     = list.reduce((s,x)=>s+safeNum(x.dueAmount||0),0);
+  const wholesale    = list.filter(s=>s.saleType==="পাইকারি").reduce((s,x)=>s+safeNum(x.total),0);
+  const retail       = list.filter(s=>s.saleType!=="পাইকারি").reduce((s,x)=>s+safeNum(x.total),0);
+
+  summaryEl.innerHTML = `
+    <div class="avp-sum-card green"><div class="avp-sum-label">মোট বিক্রয়</div><div class="avp-sum-value">${money(totalSales)}</div><div class="avp-sum-sub">${list.length}টি লেনদেন</div></div>
+    <div class="avp-sum-card teal"><div class="avp-sum-label">নগদ প্রাপ্ত</div><div class="avp-sum-value">${money(totalCash)}</div><div class="avp-sum-sub">সরাসরি</div></div>
+    <div class="avp-sum-card rose"><div class="avp-sum-label">মোট বাকি</div><div class="avp-sum-value">${money(totalDue)}</div><div class="avp-sum-sub">বকেয়া</div></div>
+    <div class="avp-sum-card green"><div class="avp-sum-label">মোট লাভ</div><div class="avp-sum-value">${money(totalProfit)}</div><div class="avp-sum-sub">নিট মুনাফা</div></div>
+    <div class="avp-sum-card sky"><div class="avp-sum-label">পাইকারি</div><div class="avp-sum-value">${money(wholesale)}</div><div class="avp-sum-sub">পাইকারি বিক্রয়</div></div>
+    <div class="avp-sum-card amber"><div class="avp-sum-label">খুচরা</div><div class="avp-sum-value">${money(retail)}</div><div class="avp-sum-sub">খুচরা বিক্রয়</div></div>
+  `;
+
+  /* Table */
+  if(!list.length){
+    tableEl.innerHTML = `<div class="avp-empty"><i class="fa-solid fa-inbox"></i><p>কোনো বিক্রয় তথ্য পাওয়া যায়নি</p></div>`;
+    return;
+  }
+
+  tableEl.innerHTML = `
+    <div class="avp-table-head">
+      <h4><i class="fa-solid fa-list-ul"></i> সকল বিক্রয় তালিকা</h4>
+      <span class="avp-count-badge">${list.length} টি রেকর্ড</span>
+    </div>
+    <div class="avp-table-overflow">
+      <table class="avp-table">
+        <thead><tr>
+          <th>তারিখ/সময়</th>
+          <th>পণ্য</th>
+          <th>ক্রেতা</th>
+          <th>পরিমাণ</th>
+          <th>মোট মূল্য</th>
+          <th>প্রাপ্ত</th>
+          <th>বাকি</th>
+          <th>লাভ</th>
+          <th>পেমেন্ট</th>
+          <th>ধরন</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(s=>{
+            const pmClass = s.paymentMethod==="সম্পূর্ণ নগদ"?"cash":s.paymentMethod==="মোবাইল ব্যাংকিং"?"mobile":safeNum(s.dueAmount)>0?"due":"cash";
+            const items = s.items||[{productName:s.productName,quantity:s.quantity}];
+            const productNames = items.map(i=>safeText(i.productName||"-")).join(", ");
+            const totalQty = items.reduce((t,i)=>t+safeNum(i.quantity),0);
+            return `<tr class="avp-clickable-row" onclick="openAllViewDetail('sales','${s.id}')">
+              <td style="white-space:nowrap">${s.date}<br><small style="color:var(--text-4)">${formatTime(s)}</small></td>
+              <td><b>${productNames}</b>${items.length>1?`<br><small style="color:var(--text-4)">${items.length}টি পণ্য</small>`:""}</td>
+              <td>${s.customerName?safeText(s.customerName):"-"}${s.village?`<br><small style="color:var(--text-4)">${safeText(s.village)}</small>`:""}</td>
+              <td style="text-align:center">${totalQty}</td>
+              <td style="text-align:right;font-weight:800;color:var(--brand)">${money(s.total)}</td>
+              <td style="text-align:right;color:var(--accent-2);font-weight:700">${money(safeNum(s.paidAmount)||safeNum(s.total))}</td>
+              <td style="text-align:right;color:var(--rose-2);font-weight:700">${safeNum(s.dueAmount)>0?money(s.dueAmount):"-"}</td>
+              <td style="text-align:right;color:var(--accent);font-weight:700">${money(s.profit)}</td>
+              <td><span class="payment-badge-sm ${pmClass}">${safeText(s.paymentMethod||"-")}</span></td>
+              <td><span class="badge ${s.saleType==="পাইকারি"?"blue":"green"}">${s.saleType||"খুচরা"}</span></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ══════════ PRODUCTS TAB ══════════ */
+function renderAllViewProducts(){
+  const dashEl  = $("avStockDashboard");
+  const tableEl = $("avProductsTable");
+  if(!dashEl||!tableEl) return;
+
+  /* Filter */
+  let list = products.filter(p=>{
+    const catOk = allViewCatFilter==="all"||p.mainCat===allViewCatFilter;
+    const searchOk = !allViewSearchTerm ||
+      (p.name||"").toLowerCase().includes(allViewSearchTerm) ||
+      (p.brand||"").toLowerCase().includes(allViewSearchTerm) ||
+      (p.subCat||"").toLowerCase().includes(allViewSearchTerm) ||
+      (p.variety||"").toLowerCase().includes(allViewSearchTerm);
+    return catOk && searchOk;
+  });
+
+  /* Stock analytics */
+  const totalStockCost   = list.reduce((s,p)=>s+safeNum(p.stock)*safeNum(p.purchasePrice),0);
+  const totalStockSell   = list.reduce((s,p)=>s+safeNum(p.stock)*safeNum(p.sellingPrice),0);
+  const totalPossProfit  = totalStockSell - totalStockCost;
+  const lowStockItems    = list.filter(p=>safeNum(p.stock)<=safeNum(p.lowStockLimit||5));
+
+  /* Sort for top/bottom */
+  const byValue = [...list].sort((a,b)=>
+    (safeNum(b.stock)*safeNum(b.purchasePrice))-(safeNum(a.stock)*safeNum(a.purchasePrice)));
+  const topProduct    = byValue[0];
+  const bottomProduct = byValue[byValue.length-1];
+
+  /* Sold qty map */
+  const soldMap = {};
+  sales.forEach(s=>{
+    (s.items||[{productId:s.productId,quantity:s.quantity}]).forEach(item=>{
+      soldMap[item.productId]=(soldMap[item.productId]||0)+safeNum(item.quantity);
+    });
+  });
+
+  dashEl.innerHTML = `
+    <div class="avp-svd-title"><i class="fa-solid fa-chart-pie"></i> স্টক মূল্য বিশ্লেষণ — Total Stock Value Dashboard</div>
+    <div class="avp-svd-grid">
+      <div class="avp-svd-item"><div class="avp-svd-lbl">মোট পণ্য সংখ্যা</div><div class="avp-svd-val">${list.length}টি</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">মোট স্টক (ক্রয়) মূল্য</div><div class="avp-svd-val" style="color:var(--rose-2)">${money(totalStockCost)}</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">মোট স্টক (বিক্রয়) মূল্য</div><div class="avp-svd-val" style="color:var(--brand)">${money(totalStockSell)}</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">সম্ভাব্য মোট লাভ</div><div class="avp-svd-val" style="color:var(--accent-2)">${money(totalPossProfit)}</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">কম স্টক পণ্য</div><div class="avp-svd-val" style="color:var(--rose)">${lowStockItems.length}টি</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">বীজ পণ্য</div><div class="avp-svd-val">${list.filter(p=>p.mainCat==="বীজ").length}টি</div></div>
+      <div class="avp-svd-item"><div class="avp-svd-lbl">কীটনাশক পণ্য</div><div class="avp-svd-val">${list.filter(p=>p.mainCat==="কীটনাশক").length}টি</div></div>
+    </div>
+    ${topProduct||bottomProduct?`
+    <div class="avp-svd-top">
+      ${topProduct?`<div class="avp-top-product-card">
+        <div class="icon high"><i class="fa-solid fa-trophy"></i></div>
+        <div>
+          <div class="label">সর্বোচ্চ মূল্যমানের পণ্য</div>
+          <div class="value">${safeText(topProduct.name)}</div>
+          <div class="label" style="margin-top:2px">${money(safeNum(topProduct.stock)*safeNum(topProduct.purchasePrice))}</div>
+        </div>
+      </div>`:""}
+      ${bottomProduct&&bottomProduct!==topProduct?`<div class="avp-top-product-card">
+        <div class="icon low"><i class="fa-solid fa-arrow-trend-down"></i></div>
+        <div>
+          <div class="label">সর্বনিম্ন মূল্যমানের পণ্য</div>
+          <div class="value">${safeText(bottomProduct.name)}</div>
+          <div class="label" style="margin-top:2px">${money(safeNum(bottomProduct.stock)*safeNum(bottomProduct.purchasePrice))}</div>
+        </div>
+      </div>`:""}
+    </div>`:""}
+  `;
+
+  if(!list.length){
+    tableEl.innerHTML = `<div class="avp-empty"><i class="fa-solid fa-seedling"></i><p>কোনো পণ্য পাওয়া যায়নি</p></div>`;
+    return;
+  }
+
+  tableEl.innerHTML = `
+    <div class="avp-table-head">
+      <h4><i class="fa-solid fa-seedling"></i> সকল প্রোডাক্ট তালিকা</h4>
+      <span class="avp-count-badge">${list.length} টি পণ্য</span>
+    </div>
+    <div class="avp-table-overflow">
+      <table class="avp-table">
+        <thead><tr>
+          <th>পণ্যের নাম</th>
+          <th>ক্যাটাগরি</th>
+          <th>ইউনিট</th>
+          <th>বর্তমান স্টক</th>
+          <th>ক্রয়মূল্য</th>
+          <th>বিক্রয়মূল্য</th>
+          <th>স্টক (ক্রয়) মূল্য</th>
+          <th>স্টক (বিক্রয়) মূল্য</th>
+          <th>সম্ভাব্য লাভ</th>
+          <th>মোট বিক্রীত</th>
+          <th>স্ট্যাটাস</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(p=>{
+            const stockCostVal  = safeNum(p.stock)*safeNum(p.purchasePrice);
+            const stockSellVal  = safeNum(p.stock)*safeNum(p.sellingPrice);
+            const possProfit    = stockSellVal - stockCostVal;
+            const isLow = safeNum(p.stock)<=safeNum(p.lowStockLimit||5);
+            const isSeed = p.mainCat==="বীজ";
+            const soldQty = soldMap[p.id]||0;
+            return `<tr class="avp-clickable-row" onclick="openAllViewDetail('products','${p.id}')">
+              <td><b>${safeText(p.name)}</b>${p.variety?`<br><small style="color:var(--text-4)">${safeText(p.variety)}</small>`:""}${p.packSize?`<span class="variety-badge">${safeText(p.packSize)}</span>`:""}</td>
+              <td><span class="product-type-badge ${isSeed?"seed":"pest"}">${isSeed?"🌱 বীজ":"🧪 কীটনাশক"}</span>${p.subCat?`<br><small>${safeText(p.subCat)}</small>`:""}</td>
+              <td>${safeText(p.unit||"প্যাকেট")}</td>
+              <td class="${isLow?"avp-stock-low":"avp-stock-ok"}">${p.stock} ${p.unit||""}</td>
+              <td style="text-align:right">${money(p.purchasePrice)}</td>
+              <td style="text-align:right">${money(p.sellingPrice)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--rose-2)">${money(stockCostVal)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--brand)">${money(stockSellVal)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--accent-2)">${money(possProfit)}</td>
+              <td style="text-align:center">${soldQty} ${p.unit||""}</td>
+              <td><span class="badge ${isLow?"red":"green"}">${isLow?"কম স্টক":"পর্যাপ্ত"}</span></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ══════════ DUES TAB ══════════ */
+function renderAllViewDues(){
+  const summaryEl = $("avDuesSummary");
+  const tableEl   = $("avDuesTable");
+  if(!summaryEl||!tableEl) return;
+
+  let list = dues.filter(d=>{
+    const dateOk  = allViewDateMatch(d.date);
+    const searchOk = !allViewSearchTerm ||
+      (d.customerName||"").toLowerCase().includes(allViewSearchTerm) ||
+      (d.productName||"").toLowerCase().includes(allViewSearchTerm) ||
+      (d.phone||"").toLowerCase().includes(allViewSearchTerm);
+    let dueOk = true;
+    if(allViewDueFilter==="active")  dueOk = safeNum(d.dueAmount)>0;
+    if(allViewDueFilter==="overdue") dueOk = safeNum(d.dueAmount)>0&&d.dueDate&&daysUntil(d.dueDate)<0;
+    if(allViewDueFilter==="paid")    dueOk = safeNum(d.dueAmount)<=0;
+    return dateOk && searchOk && dueOk;
+  });
+
+  const totalDue     = list.reduce((s,d)=>s+safeNum(d.dueAmount),0);
+  const totalPaid    = list.reduce((s,d)=>s+safeNum(d.paidAmount||0),0);
+  const totalAmount  = list.reduce((s,d)=>s+safeNum(d.totalAmount||d.total||0),0);
+  const overdueList  = list.filter(d=>d.dueDate&&daysUntil(d.dueDate)<0&&safeNum(d.dueAmount)>0);
+  const overdueAmt   = overdueList.reduce((s,d)=>s+safeNum(d.dueAmount),0);
+  const activeDues   = list.filter(d=>safeNum(d.dueAmount)>0).length;
+
+  summaryEl.innerHTML = `
+    <div class="avp-sum-card rose"><div class="avp-sum-label">মোট বকেয়া</div><div class="avp-sum-value">${money(totalDue)}</div><div class="avp-sum-sub">${activeDues} জন গ্রাহক</div></div>
+    <div class="avp-sum-card green"><div class="avp-sum-label">মোট পরিশোধ</div><div class="avp-sum-value">${money(totalPaid)}</div><div class="avp-sum-sub">আদায়কৃত</div></div>
+    <div class="avp-sum-card sky"><div class="avp-sum-label">মোট ধার</div><div class="avp-sum-value">${money(totalAmount)}</div><div class="avp-sum-sub">মূল পরিমাণ</div></div>
+    <div class="avp-sum-card amber"><div class="avp-sum-label">মেয়াদ উত্তীর্ণ</div><div class="avp-sum-value">${money(overdueAmt)}</div><div class="avp-sum-sub">${overdueList.length} জন</div></div>
+    <div class="avp-sum-card teal"><div class="avp-sum-label">মোট গ্রাহক</div><div class="avp-sum-value">${list.length}জন</div><div class="avp-sum-sub">সকল রেকর্ড</div></div>
+    <div class="avp-sum-card purple"><div class="avp-sum-label">আদায়ের হার</div><div class="avp-sum-value">${totalAmount>0?Math.round(totalPaid/totalAmount*100):0}%</div><div class="avp-sum-sub">অগ্রগতি</div></div>
+  `;
+
+  if(!list.length){
+    tableEl.innerHTML = `<div class="avp-empty"><i class="fa-solid fa-check-circle" style="color:var(--accent)"></i><p>কোনো বাকি তথ্য পাওয়া যায়নি</p></div>`;
+    return;
+  }
+
+  tableEl.innerHTML = `
+    <div class="avp-table-head">
+      <h4><i class="fa-solid fa-hand-holding-dollar"></i> সকল বাকির তালিকা</h4>
+      <span class="avp-count-badge">${list.length} টি রেকর্ড</span>
+    </div>
+    <div class="avp-table-overflow">
+      <table class="avp-table">
+        <thead><tr>
+          <th>গ্রাহক</th>
+          <th>পণ্য</th>
+          <th>তারিখ</th>
+          <th>মোট ধার</th>
+          <th>পরিশোধ</th>
+          <th>বকেয়া</th>
+          <th>আদায়ের অগ্রগতি</th>
+          <th>পরিশোধের তারিখ</th>
+          <th>স্ট্যাটাস</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(d=>{
+            const days = d.dueDate?daysUntil(d.dueDate):null;
+            const isOverdue = days!==null&&days<0&&safeNum(d.dueAmount)>0;
+            const isPaid = safeNum(d.dueAmount)<=0;
+            const totalAmt = safeNum(d.totalAmount||d.total||0);
+            const paidAmt  = safeNum(d.paidAmount||0);
+            const progress = totalAmt>0?Math.min(100,Math.round(paidAmt/totalAmt*100)):100;
+            return `<tr class="avp-clickable-row" onclick="openAllViewDetail('dues','${d.id}')">
+              <td><b>${safeText(d.customerName)}</b>${d.phone?`<br><small style="color:var(--text-4)">${safeText(d.phone)}</small>`:""}</td>
+              <td>${safeText(d.productName||"-")}</td>
+              <td>${d.date||"-"}</td>
+              <td style="text-align:right;font-weight:700">${money(totalAmt)}</td>
+              <td style="text-align:right;color:var(--accent-2);font-weight:700">${money(paidAmt)}</td>
+              <td style="text-align:right;font-weight:800;color:${isOverdue?"var(--rose-2)":"var(--soil-mid)"}">${money(d.dueAmount)}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:${progress}%;background:${isPaid?"var(--accent-2)":isOverdue?"var(--rose)":"var(--sky)"};border-radius:4px;transition:width .3s"></div>
+                  </div>
+                  <span style="font-size:.7rem;font-weight:700;color:var(--text-3);min-width:28px">${progress}%</span>
+                </div>
+              </td>
+              <td class="${isOverdue?"avp-due-overdue":""}">${d.dueDate||"-"}${isOverdue?`<br><small>⚠️ ${Math.abs(days)}দিন পেরিয়েছে</small>`:""}</td>
+              <td><span class="badge ${isPaid?"green":isOverdue?"red":"amber"}">${isPaid?"পরিশোধিত":isOverdue?"মেয়াদ উত্তীর্ণ":"বকেয়া"}</span></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ══════════ UNIFIED DETAIL VIEW ══════════ */
+function openAllViewDetail(type, id){
+  const detailView = $("avDetailView");
+  const content    = $("avDetailContent");
+  const title      = $("avDetailTitle");
+  if(!detailView||!content) return;
+
+  if(type==="sales"){
+    const s = sales.find(x=>x.id===id);
+    if(!s) return;
+    title.innerHTML = `<i class="fa-solid fa-receipt"></i> বিক্রয় বিস্তারিত — #${s.id}`;
+    const items = s.items||[{productName:s.productName,quantity:s.quantity,price:s.price,discount:s.discount||0,total:s.total}];
+    const totalQty = items.reduce((t,i)=>t+safeNum(i.quantity),0);
+    content.innerHTML = `<div class="avt-detail-body">
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-info-circle"></i> মূল তথ্য</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-info-grid">
+            <div class="avd-info-item"><div class="avd-info-label">ইনভয়েস নম্বর</div><div class="avd-info-value">${s.id}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">তারিখ</div><div class="avd-info-value">${s.date||"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">সময়</div><div class="avd-info-value">${formatTime(s)}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">গ্রাহকের নাম</div><div class="avd-info-value">${safeText(s.customerName||"সাধারণ ক্রেতা")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">মোবাইল</div><div class="avd-info-value">${s.customerPhone?safeText(s.customerPhone):"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">গ্রাম</div><div class="avd-info-value">${s.village?safeText(s.village):"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">বিক্রয় ধরন</div><div class="avd-info-value">${s.saleType||"খুচরা"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">পেমেন্ট পদ্ধতি</div><div class="avd-info-value">${safeText(s.paymentMethod||"-")}</div></div>
+            ${s.note?`<div class="avd-info-item"><div class="avd-info-label">নোট</div><div class="avd-info-value">${safeText(s.note)}</div></div>`:""}
+          </div>
+        </div>
+      </div>
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-seedling"></i> বিক্রীত পণ্য তালিকা</h4></div>
+        <div class="avd-sec-body" style="padding:0">
+          <table class="avp-table">
+            <thead><tr><th>পণ্য</th><th>পরিমাণ</th><th>একক মূল্য</th><th>ছাড়</th><th>মোট</th><th>লাভ</th></tr></thead>
+            <tbody>${items.map(item=>{
+              const p = products.find(x=>x.id===item.productId);
+              const profit = p?((safeNum(item.price)-safeNum(p.purchasePrice))*safeNum(item.quantity)-safeNum(item.discount||0)):"-";
+              return `<tr>
+                <td><b>${safeText(item.productName||"-")}</b></td>
+                <td style="text-align:center">${item.quantity}</td>
+                <td style="text-align:right">${money(item.price)}</td>
+                <td style="text-align:right">${money(item.discount||0)}</td>
+                <td style="text-align:right;font-weight:700;color:var(--brand)">${money(item.total)}</td>
+                <td style="text-align:right;color:var(--accent-2);font-weight:700">${typeof profit==="number"?money(profit):"-"}</td>
+              </tr>`;
+            }).join("")}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-calculator"></i> আর্থিক হিসাব</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-analytics-grid">
+            <div class="avd-analytics-item"><div class="lbl">মোট পণ্য পরিমাণ</div><div class="val">${totalQty}টি</div></div>
+            <div class="avd-analytics-item"><div class="lbl">মোট বিক্রয় মূল্য</div><div class="val">${money(s.total)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">প্রাপ্ত অর্থ</div><div class="val profit">${money(safeNum(s.paidAmount)||safeNum(s.total))}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">বাকি অর্থ</div><div class="val cost">${money(s.dueAmount||0)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">মোট লাভ</div><div class="val profit">${money(s.profit)}</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 0 16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="printSaleInvoice('${s.id}')"><i class="fa-solid fa-print"></i> ইনভয়েস প্রিন্ট</button>
+        <button class="btn btn-danger" onclick="if(confirm('এই বিক্রয় মুছে ফেলবেন?')){deleteSale('${s.id}');hideAllViewDetail();renderAllViewSales();}"><i class="fa-solid fa-trash"></i> মুছুন</button>
+      </div>
+    </div>`;
+
+  } else if(type==="products"){
+    const p = products.find(x=>x.id===id);
+    if(!p) return;
+    const soldQty = (()=>{let t=0;sales.forEach(s=>(s.items||[{productId:s.productId,quantity:s.quantity}]).forEach(i=>{if(i.productId===p.id)t+=safeNum(i.quantity);}));return t;})();
+    const stockCost  = safeNum(p.stock)*safeNum(p.purchasePrice);
+    const stockSell  = safeNum(p.stock)*safeNum(p.sellingPrice);
+    const possProfit = stockSell - stockCost;
+    const totalSoldAmt = sales.reduce((t,s)=>{
+      const items = s.items||[];
+      return t+items.filter(i=>i.productId===p.id).reduce((st,i)=>st+safeNum(i.total||0),0);
+    },0);
+    const isSeed = p.mainCat==="বীজ";
+    title.innerHTML = `<i class="fa-solid fa-seedling"></i> পণ্য বিস্তারিত — ${safeText(p.name)}`;
+    content.innerHTML = `<div class="avt-detail-body">
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-info-circle"></i> পণ্যের মূল তথ্য</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-info-grid">
+            <div class="avd-info-item"><div class="avd-info-label">পণ্যের নাম</div><div class="avd-info-value large">${safeText(p.name)}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ব্র্যান্ড</div><div class="avd-info-value">${safeText(p.brand||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">প্রধান ক্যাটাগরি</div><div class="avd-info-value">${isSeed?"🌱 বীজ":"🧪 কীটনাশক"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">সাব ক্যাটাগরি</div><div class="avd-info-value">${safeText(p.subCat||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ভ্যারাইটি</div><div class="avd-info-value">${safeText(p.variety||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">প্যাক সাইজ</div><div class="avd-info-value">${safeText(p.packSize||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ইউনিট</div><div class="avd-info-value">${safeText(p.unit||"প্যাকেট")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ব্যাচ নম্বর</div><div class="avd-info-value">${safeText(p.batchNo||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">উৎপাদন তারিখ</div><div class="avd-info-value">${p.mfgDate||"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">মেয়াদ উত্তীর্ণ</div><div class="avd-info-value ${p.expDate&&daysUntil(p.expDate)!==null&&daysUntil(p.expDate)<=30?"rose":""}">${p.expDate||"-"}</div></div>
+            ${isSeed?`<div class="avd-info-item"><div class="avd-info-label">অঙ্কুরোদগম হার</div><div class="avd-info-value">${p.germRate||"-"}%</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">মৌসুম</div><div class="avd-info-value">${safeText(p.season||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ফসলের ধরন</div><div class="avd-info-value">${safeText(p.cropType||"-")}</div></div>`
+            :`<div class="avd-info-item"><div class="avd-info-label">সক্রিয় উপাদান</div><div class="avd-info-value">${safeText(p.activeIng||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">ডোজ</div><div class="avd-info-value">${safeText(p.dosage||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">লক্ষ্য কীটপতঙ্গ</div><div class="avd-info-value">${safeText(p.target||"-")}</div></div>`}
+            <div class="avd-info-item"><div class="avd-info-label">সর্বশেষ আপডেট</div><div class="avd-info-value">${p.updatedAt?new Date(p.updatedAt).toLocaleDateString("bn-BD"):"-"}</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-coins"></i> মূল্য ও স্টক বিশ্লেষণ</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-analytics-grid">
+            <div class="avd-analytics-item"><div class="lbl">বর্তমান স্টক</div><div class="val">${p.stock} ${p.unit||""}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">একক ক্রয়মূল্য</div><div class="val cost">${money(p.purchasePrice)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">একক বিক্রয়মূল্য</div><div class="val">${money(p.sellingPrice)}</div></div>
+            ${p.wholesalePrice?`<div class="avd-analytics-item"><div class="lbl">পাইকারি মূল্য</div><div class="val">${money(p.wholesalePrice)}</div></div>`:""}
+            <div class="avd-analytics-item"><div class="lbl">স্টক (ক্রয়) মূল্য</div><div class="val cost">${money(stockCost)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">স্টক (বিক্রয়) মূল্য</div><div class="val">${money(stockSell)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">সম্ভাব্য লাভ</div><div class="val profit">${money(possProfit)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">কম স্টক সীমা</div><div class="val">${p.lowStockLimit||5} ${p.unit||""}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">মোট বিক্রীত পরিমাণ</div><div class="val profit">${soldQty} ${p.unit||""}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">মোট বিক্রয় রাজস্ব</div><div class="val">${money(totalSoldAmt)}</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 0 16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="editProduct('${p.id}');closeAllView()"><i class="fa-solid fa-pen"></i> সম্পাদনা</button>
+        <button class="btn btn-danger" onclick="deleteProduct('${p.id}');hideAllViewDetail();renderAllViewProducts()"><i class="fa-solid fa-trash"></i> মুছুন</button>
+      </div>
+    </div>`;
+
+  } else if(type==="dues"){
+    const d = dues.find(x=>x.id===id);
+    if(!d) return;
+    const payments = d.payments||[];
+    const days = d.dueDate?daysUntil(d.dueDate):null;
+    const isOverdue = days!==null&&days<0&&safeNum(d.dueAmount)>0;
+    const isPaid = safeNum(d.dueAmount)<=0;
+    const totalAmt = safeNum(d.totalAmount||d.total||0);
+    const paidAmt  = safeNum(d.paidAmount||0);
+    const progress = totalAmt>0?Math.min(100,Math.round(paidAmt/totalAmt*100)):100;
+    title.innerHTML = `<i class="fa-solid fa-hand-holding-dollar"></i> বাকি বিস্তারিত — ${safeText(d.customerName)}`;
+    content.innerHTML = `<div class="avt-detail-body">
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-user"></i> গ্রাহকের তথ্য</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-info-grid">
+            <div class="avd-info-item"><div class="avd-info-label">গ্রাহকের নাম</div><div class="avd-info-value large">${safeText(d.customerName)}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">মোবাইল</div><div class="avd-info-value">${d.phone?safeText(d.phone):"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">পণ্য</div><div class="avd-info-value">${safeText(d.productName||"-")}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">তারিখ</div><div class="avd-info-value">${d.date||"-"}</div></div>
+            <div class="avd-info-item"><div class="avd-info-label">পরিশোধের তারিখ</div><div class="avd-info-value ${isOverdue?"rose":""}">${d.dueDate||"-"}</div></div>
+            ${d.note?`<div class="avd-info-item"><div class="avd-info-label">নোট</div><div class="avd-info-value">${safeText(d.note)}</div></div>`:""}
+          </div>
+        </div>
+      </div>
+      <div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-calculator"></i> আর্থিক হিসাব</h4></div>
+        <div class="avd-sec-body">
+          <div class="avd-analytics-grid">
+            <div class="avd-analytics-item"><div class="lbl">মোট ধারের পরিমাণ</div><div class="val">${money(totalAmt)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">মোট পরিশোধিত</div><div class="val profit">${money(paidAmt)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">অবশিষ্ট বকেয়া</div><div class="val cost">${money(d.dueAmount)}</div></div>
+            <div class="avd-analytics-item"><div class="lbl">আদায়ের হার</div><div class="val profit">${progress}%</div></div>
+            <div class="avd-analytics-item"><div class="lbl">স্ট্যাটাস</div><div class="val ${isPaid?"profit":isOverdue?"cost":""}">${isPaid?"✓ পরিশোধিত":isOverdue?"⚠️ মেয়াদ উত্তীর্ণ":"বকেয়া"}</div></div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+              <div style="font-size:.78rem;color:var(--text-3)">আদায়ের অগ্রগতি:</div>
+              <span style="font-weight:700;font-size:.82rem">${progress}%</span>
+            </div>
+            <div style="height:12px;background:#e5e7eb;border-radius:6px;overflow:hidden">
+              <div style="height:100%;width:${progress}%;background:${isPaid?"var(--accent-2)":isOverdue?"var(--rose)":"var(--sky)"};border-radius:6px;transition:width .5s"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${payments.length?`<div class="avd-section">
+        <div class="avd-sec-head"><h4><i class="fa-solid fa-clock-rotate-left"></i> পরিশোধের ইতিহাস (${payments.length}টি)</h4></div>
+        <div class="avd-sec-body">
+          ${[...payments].sort((a,b)=>(b.createdAt||b.date||"").localeCompare(a.createdAt||a.date||"")).map(pay=>`
+            <div class="avd-payment-hist-item">
+              <div>
+                <div style="font-weight:700;color:var(--text-1)">${money(pay.amount)}</div>
+                <div style="font-size:.74rem;color:var(--text-4)">${pay.date||"-"} · ${pay.method||"নগদ"}</div>
+                ${pay.note?`<div style="font-size:.74rem;color:var(--text-3)">${safeText(pay.note)}</div>`:""}
+              </div>
+              <span class="badge green">আদায়কৃত</span>
+            </div>`).join("")}
+        </div>
+      </div>`:""}
+      <div style="padding:0 0 16px;display:flex;gap:10px;flex-wrap:wrap">
+        ${!isPaid?`<button class="btn btn-success" onclick="collectDue('${d.id}')"><i class="fa-solid fa-hand-holding-dollar"></i> আদায় করুন</button>`:""}
+        <button class="btn btn-danger" onclick="deleteDue('${d.id}');hideAllViewDetail();renderAllViewDues()"><i class="fa-solid fa-trash"></i> মুছুন</button>
+      </div>
+    </div>`;
+  }
+
+  detailView.classList.add("show");
+  detailView.style.display = "flex";
+  detailView.scrollTop = 0;
+}
+
+function hideAllViewDetail(){
+  const detailView = $("avDetailView");
+  if(detailView){ detailView.classList.remove("show"); detailView.style.display = "none"; }
+}
+
+/* ---- Export CSV ---- */
+function exportAllViewCSV(){
+  let csv = "";
+  const tab = allViewActiveTab;
+  if(tab==="sales"){
+    csv = "তারিখ,ক্রেতা,পণ্য,পরিমাণ,মোট,প্রাপ্ত,বাকি,লাভ,পেমেন্ট,ধরন\n";
+    sales.forEach(s=>{
+      const items = s.items||[{productName:s.productName,quantity:s.quantity}];
+      csv += `"${s.date}","${s.customerName||""}","${items.map(i=>i.productName).join("+")}","${items.reduce((t,i)=>t+safeNum(i.quantity),0)}","${s.total}","${s.paidAmount||s.total}","${s.dueAmount||0}","${s.profit||0}","${s.paymentMethod}","${s.saleType||"খুচরা"}"\n`;
+    });
+  } else if(tab==="products"){
+    csv = "পণ্যের নাম,ক্যাটাগরি,স্টক,ক্রয়মূল্য,বিক্রয়মূল্য,স্টক ক্রয়মূল্য,স্টক বিক্রয়মূল্য,সম্ভাব্য লাভ\n";
+    products.forEach(p=>{
+      const sc = safeNum(p.stock)*safeNum(p.purchasePrice);
+      const ss = safeNum(p.stock)*safeNum(p.sellingPrice);
+      csv += `"${p.name}","${p.mainCat}","${p.stock} ${p.unit||""}","${p.purchasePrice}","${p.sellingPrice}","${sc}","${ss}","${ss-sc}"\n`;
+    });
+  } else if(tab==="dues"){
+    csv = "গ্রাহক,পণ্য,তারিখ,মোট ধার,পরিশোধ,বকেয়া,স্ট্যাটাস\n";
+    dues.forEach(d=>{
+      const isPaid = safeNum(d.dueAmount)<=0;
+      csv += `"${d.customerName}","${d.productName||""}","${d.date||""}","${d.totalAmount||d.total||0}","${d.paidAmount||0}","${d.dueAmount||0}","${isPaid?"পরিশোধিত":"বকেয়া"}"\n`;
+    });
+  }
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = `srks-${tab}-${todayISO()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showToast("CSV ডাউনলোড হচ্ছে ✓");
+}
+
+/* ---- Hook into dashboard card modal: clicking a row opens All View detail ---- */
+/* Override buildSaleDetailTable to add clickable rows that go to All View */
+const _origBuildSaleTable = buildSaleDetailTable;
+window.buildSaleDetailTable = function(list, showProfit=false){
+  if(!list.length) return `<div class="dm-empty"><i class="fa-solid fa-inbox"></i><p>কোনো তথ্য পাওয়া যায়নি</p></div>`;
+  return `<div class="dm-table-wrap"><table class="dm-table">
+    <thead><tr>
+      <th>সময়</th><th>পণ্য</th><th>ক্রেতা</th>
+      <th>পরিমাণ</th><th>মোট</th>
+      ${showProfit?'<th>লাভ</th>':''}
+      <th>পেমেন্ট</th><th>ধরন</th><th>বিস্তারিত</th>
+    </tr></thead>
+    <tbody>${list.map(s=>{
+      const pmClass=s.paymentMethod==="সম্পূর্ণ নগদ"?"cash"
+        :s.paymentMethod==="মোবাইল ব্যাংকিং"?"mobile"
+        :s.paymentMethod==="সম্পূর্ণ বাকি"||safeNum(s.dueAmount)>0?"due":"cash";
+      return `<tr>
+        <td style="white-space:nowrap">${s.date}<br><small style="color:var(--text-4)">${formatTime(s)}</small></td>
+        <td><b>${safeText(s.productName)}</b></td>
+        <td>${s.customerName?safeText(s.customerName):'-'}${s.village?`<br><small>${safeText(s.village)}</small>`:''}</td>
+        <td style="text-align:center">${s.quantity}</td>
+        <td style="text-align:right;font-weight:700;color:var(--brand)">${money(s.total)}</td>
+        ${showProfit?`<td style="text-align:right;color:var(--accent-2);font-weight:700">${money(s.profit)}</td>`:''}
+        <td><span class="payment-badge-sm ${pmClass}">${safeText(s.paymentMethod||'-')}</span>
+          ${safeNum(s.dueAmount)>0?`<br><small style="color:var(--rose-mid)">বাকি: ${money(s.dueAmount)}</small>`:''}</td>
+        <td><span class="badge ${s.saleType==='পাইকারি'?'blue':'green'}">${s.saleType||'খুচরা'}</span></td>
+        <td><button class="btn btn-sm btn-primary" onclick="closeDetailModal();openAllView('sales','${s.id}')" title="সব (All)-এ বিস্তারিত দেখুন" style="font-size:.7rem;padding:4px 8px"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+};
+
+const _origBuildDueTable = buildDueDetailTable;
+window.buildDueDetailTable = function(list){
+  if(!list.length) return `<div class="dm-empty"><i class="fa-solid fa-circle-check" style="color:var(--green-bright)"></i><p>কোনো বকেয়া নেই</p></div>`;
+  return `<div class="dm-table-wrap"><table class="dm-table">
+    <thead><tr><th>ক্রেতা</th><th>পণ্য</th><th>মোট পরিমাণ</th><th>পরিশোধিত</th><th>বকেয়া</th><th>তারিখ</th><th>বিস্তারিত</th></tr></thead>
+    <tbody>${list.map(d=>{
+      const days=d.dueDate?daysUntil(d.dueDate):null;
+      const isOverdue=days!==null&&days<0;
+      return `<tr>
+        <td><b>${safeText(d.customerName)}</b>${d.phone?`<br><small>${safeText(d.phone)}</small>`:''}</td>
+        <td>${safeText(d.productName||'-')}</td>
+        <td style="text-align:right">${money(d.totalAmount)}</td>
+        <td style="text-align:right;color:var(--green-dark)">${money(d.paidAmount)}</td>
+        <td style="text-align:right;font-weight:700;color:${isOverdue?'var(--rose-mid)':'var(--soil-mid)'}"> ${money(d.dueAmount)}</td>
+        <td>${d.dueDate||d.date||'-'}${isOverdue?`<br><span style="font-size:.7rem;color:var(--rose-mid)">⚠️ ${Math.abs(days)} দিন পেরিয়েছে</span>`:''}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="closeDetailModal();openAllView('dues','${d.id}')" title="সব (All)-এ বিস্তারিত দেখুন" style="font-size:.7rem;padding:4px 8px"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+};
+
+/* ---- Dashboard card click to All View for product cards ---- */
+/* Override stock kpi cards to link to all view */
+function goToAllProducts(){
+  openAllView("products");
+}
+
+/* ---- Init ---- */
+window.addEventListener("load",()=>{
+  initAllView();
+}, true);
+
+/* ===================== Pagination Helpers ===================== */
+function salesNextPage(){
+  const typeFilter=$("salesFilterType")?.value||"";
+  let list=sales;
+  if(typeFilter) list=list.filter(s=>s.saleType===typeFilter);
+  if(salesPageOffset+salesPageSize<list.length){
+    salesPageOffset+=salesPageSize;
+    renderSales();
+    $("salesTable")?.closest(".card")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+}
+function salesPrevPage(){
+  if(salesPageOffset>0){
+    salesPageOffset=Math.max(0,salesPageOffset-salesPageSize);
+    renderSales();
+    $("salesTable")?.closest(".card")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+}
+
+/* ===================== Data Backup Export ===================== */
+function exportFullBackup(){
+  try{
+    const backup={
+      exportDate: new Date().toISOString(),
+      shopName: settings.shopName||"SRKS",
+      products,
+      sales,
+      dues,
+      withdrawals,
+      settings: {...settings, adminPass:"[hidden]"}
+    };
+    const json=JSON.stringify(backup,null,2);
+    const blob=new Blob([json],{type:"application/json;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`srks-backup-${todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("ব্যাকআপ ডাউনলোড হচ্ছে ✓");
+  }catch(e){
+    showToast("ব্যাকআপ তৈরিতে সমস্যা হয়েছে");
+    console.error(e);
+  }
+}
+
 /* ===================== Expose globals ===================== */
 window.setSaleType=setSaleType;
 window.selectProduct=selectProduct;
@@ -2248,3 +3751,16 @@ window.printSaleInvoice=printSaleInvoice;
 window.onMainCatChange=onMainCatChange;
 window.calcPartialDue=calcPartialDue;
 window.renderAccounts=renderAccounts;
+window.openAllView=openAllView;
+window.closeAllView=closeAllView;
+window.openAllViewDetail=openAllViewDetail;
+window.hideAllViewDetail=hideAllViewDetail;
+window.goToAllProducts=goToAllProducts;
+window.renderAllViewSales=renderAllViewSales;
+window.renderAllViewProducts=renderAllViewProducts;
+window.renderAllViewDues=renderAllViewDues;
+window.openPartialSoldReport=openPartialSoldReport;
+window.closePartialSoldReport=closePartialSoldReport;
+window.salesNextPage=salesNextPage;
+window.salesPrevPage=salesPrevPage;
+window.exportFullBackup=exportFullBackup;
